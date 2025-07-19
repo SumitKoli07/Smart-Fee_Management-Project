@@ -1,0 +1,104 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+* {
+  font-family: 'Poppins', sans-serif;
+}
+
+.gradient-bg {
+  background: linear-gradient(135deg, #6366F1 0%, #A855F7 100%);
+}
+
+html.dark .gradient-bg {
+  background: linear-gradient(135deg, #4F46E5 0%, #9333EA 100%);
+}
+
+.input {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #E2E8F0;
+  border-radius: 0.5rem;
+  background-color: #F9FAFB;
+  color: #1F2937;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+html.dark .input {
+  background-color: #1E293B;
+  border-color: #334155;
+  color: #E2E8F0;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #6366F1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.glass-effect {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+html.dark .glass-effect {
+  background: rgba(15, 23, 42, 0.8);
+}
+
+/* Theme toggle styles */
+.theme-toggle {
+  cursor: pointer;
+  position: relative;
+  width: 48px;
+  height: 24px;
+  background-color: #E2E8F0;
+  border-radius: 24px;
+  transition: all 0.3s;
+}
+
+html.dark .theme-toggle {
+  background-color: #334155;
+}
+
+.theme-toggle::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  top: 3px;
+  left: 3px;
+  background-color: #6366F1;
+  transition: all 0.3s;
+}
+
+html.dark .theme-toggle::after {
+  transform: translateX(24px);
+  background-color: #A855F7;
+}
+
+/* Dark mode transition */
+.dark-transition {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Message animation */
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.message-animate-in {
+  animation: slideIn 0.3s forwards;
+}
+
+.message-animate-out {
+  animation: fadeOut 0.3s forwards;
+} 

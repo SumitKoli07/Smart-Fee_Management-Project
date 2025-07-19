@@ -1,0 +1,2092 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Owner Dashboard - Smart Fee Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link rel="stylesheet" href="ownerDashboard.css">
+    <script>
+        // Tailwind dark mode config
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#121826',
+                        darkcard: '#1E293B',
+                        darktext: '#E2E8F0'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html, body {
+            height: 100%;
+            width: 100%;
+            overflow-x: hidden;
+        }
+        body {
+            min-height: 100vh;
+            overflow-y: auto;
+        }
+        .content-wrapper {
+            height: auto;
+            min-height: 100vh;
+        }
+        main {
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        .overflow-x-auto {
+            max-width: 100%;
+            -webkit-overflow-scrolling: touch;
+        }
+        table {
+            table-layout: fixed;
+            width: 100%;
+        }
+        td, th {
+            word-wrap: break-word;
+            max-width: 150px;
+        }
+        @media (max-width: 768px) {
+            .responsive-table {
+                display: block;
+                width: 100%;
+                overflow-x: auto;
+            }
+        }
+        
+        /* Add these styles to fix table cell overflow issues */
+        td {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 150px;
+        }
+        
+        /* For email cells specifically */
+        td.email-cell {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        /* Add tooltip-like behavior for truncated content */
+        td.truncate-cell {
+            position: relative;
+        }
+        
+        td.truncate-cell:hover::after {
+            content: attr(data-content);
+            position: absolute;
+            left: 0;
+            top: 100%;
+            z-index: 50;
+            background-color: white;
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            white-space: normal;
+            max-width: 300px;
+            word-break: break-all;
+        }
+        
+        .dark td.truncate-cell:hover::after {
+            background-color: #1E293B;
+            border: 1px solid #4B5563;
+            color: white;
+        }
+    </style>
+</head>
+<body class="dark-transition bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-slate-900 dark:via-darkbg dark:to-slate-900 min-h-screen">
+    <div class="content-wrapper flex flex-col h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="fixed inset-y-0 left-0 z-50 w-[var(--sidebar-width)] bg-white dark:bg-darkcard shadow-lg transform transition-transform duration-300 ease-in-out" id="sidebar">
+            <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-lg gradient-bg flex items-center justify-center text-white font-bold text-xl mr-3">S</div>
+                    <span class="text-xl font-bold text-indigo-800 dark:text-indigo-300">SmartFee</span>
+                </div>
+                <button id="closeSidebar" class="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="p-4">
+                <div class="mb-8">
+                    <h5 class="text-sm font-medium text-gray-400 dark:text-gray-500 mb-4 uppercase">Main Menu</h5>
+                    <nav>
+                        <ul class="space-y-2">
+                            <li>
+                                <a href="#" class="flex items-center p-3 text-gray-800 dark:text-gray-200 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 font-medium">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                                    </svg>
+                                    Dashboard
+                                </a>
+                            </li>
+                            <li>
+                                <a href="clients.html" class="flex items-center p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                    </svg>
+                                    Clients
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#" class="flex items-center p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition" id="paymentsLink">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                    Payments
+                                </a>
+                            </li>
+                            <li>
+                                <a href="settings.html" class="flex items-center p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    Settings
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+                <div>
+                    <h5 class="text-sm font-medium text-gray-400 dark:text-gray-500 mb-4 uppercase">Account</h5>
+                    <a href="ownerLogin.html" class="flex items-center p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        Logout
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 ml-0 md:ml-[var(--sidebar-width)] transition-all duration-300 ease-in-out flex flex-col">
+            <!-- Top Navbar -->
+            <header class="sticky top-0 z-40 glass-effect">
+                <div class="h-16 px-4 flex items-center justify-between">
+                    <div class="flex items-center">
+                        <button id="toggleSidebar" class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 md:hidden">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
+                        <h1 class="ml-2 text-lg font-semibold text-gray-800 dark:text-white md:ml-0">Yoga Classes Dashboard</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="relative">
+                            <button class="relative p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                </svg>
+                                <span class="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">3</span>
+                            </button>
+                        </div>
+                        <div class="theme-toggle" id="themeToggle" role="button" aria-label="Toggle dark mode"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-full bg-indigo-600 dark:bg-indigo-500 flex items-center justify-center text-white mr-2" id="userInitials">JD</div>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300 hidden md:inline" id="userName">John Doe</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <main class="p-4 md:p-6 overflow-x-auto">
+                <!-- Dashboard Cards Section -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white dark:bg-darkcard rounded-xl shadow-md p-6 border-t-4 border-yellow-500">
+                        <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Upcoming Payments (1 Month)</h2>
+                        <p class="text-3xl font-bold text-gray-800 dark:text-white mb-1" id="upcoming-payments-count">0</p>
+                        <p class="text-gray-500 dark:text-gray-400" id="upcoming-payments-amount">₹0</p>
+                    </div>
+                    <div class="bg-white dark:bg-darkcard rounded-xl shadow-md p-6 border-t-4 border-red-500">
+                        <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Overdue Payments</h2>
+                        <p class="text-3xl font-bold text-gray-800 dark:text-white mb-1" id="overdue-payments-count">0</p>
+                        <p class="text-gray-500 dark:text-gray-400" id="overdue-payments-amount">₹0</p>
+                    </div>
+                    <div class="bg-white dark:bg-darkcard rounded-xl shadow-md p-6 border-t-4 border-blue-500">
+                        <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Active Clients</h2>
+                        <p class="text-3xl font-bold text-gray-800 dark:text-white mb-1" id="active-clients-count">0</p>
+                        <p class="text-gray-500 dark:text-gray-400" id="service-name">Loading service...</p>
+                    </div>
+                    <div class="bg-white dark:bg-darkcard rounded-xl shadow-md p-6 border-t-4 border-green-500">
+                        <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Revenue This Year</h2>
+                        <p class="text-3xl font-bold text-gray-800 dark:text-white mb-1" id="yearly-revenue">₹0</p>
+                        <p class="text-gray-500 dark:text-gray-400" id="revenue-percentage">Calculating...</p>
+                    </div>
+                </div>
+
+                <!-- Client Management Section -->
+                <div class="bg-white dark:bg-darkcard rounded-xl shadow-md mb-6">
+                    <div class="flex flex-wrap justify-between items-center p-4 md:p-6 border-b border-gray-200 dark:border-gray-700">
+                        <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-2 md:mb-0">Approved Client Requests</h2>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">From Request Collection</span>
+                            <button id="addClientBtn" class="flex items-center gradient-bg text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Add Client
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-4 md:p-6">
+                        <!-- Client Table -->
+                        <div class="responsive-table overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-auto">
+                                <thead>
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[15%]">Client Name</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[15%]">Email</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[12%]">Mobile</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[10%]">Days left</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[10%]">Plan</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[12%]">Last Payment</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[12%]">Next Due</th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[14%]">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200 dark:divide-gray-700" id="clientTable">
+                                    <!-- Client data will be dynamically loaded from the Request collection -->
+                                    <tr>
+                                        <td colspan="8" class="px-4 py-4 text-center text-gray-500 dark:text-gray-400">
+                                            <div class="flex items-center justify-center">
+                                                <svg class="animate-spin h-5 w-5 mr-3 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Loading approved clients from requests...
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="flex flex-wrap justify-between items-center mt-4">
+                            <div class="text-sm text-gray-600 dark:text-gray-400 mb-2 md:mb-0">Showing <span id="clientCount">0</span> approved client requests</div>
+                            <div class="flex space-x-1" id="pagination">
+                                <!-- Pagination will be dynamically generated -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payments Section -->
+                <div id="payments-section" class="hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Payments</h1>
+                        <button id="openPaymentSettingsBtn" class="flex items-center gradient-bg text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            Payment Settings
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Add Client Modal -->
+    <div id="addClientModal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50 dark:bg-opacity-70"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div class="bg-white dark:bg-darkcard rounded-xl shadow-xl p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Add New Client</h3>
+                    <button id="closeAddClientModal" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <form id="addClientForm">
+                    <div class="grid gap-4">
+                        <div>
+                            <label for="clientName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
+                            <input type="text" id="clientName" name="fullname" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white" required pattern="[A-Za-z\s]+" title="Please enter a valid name (letters and spaces only)">
+                        </div>
+                        <div>
+                            <label for="clientEmail" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                            <input type="email" id="clientEmail" name="email" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white" required>
+                        </div>
+                        <div>
+                            <label for="clientDob" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date of Birth</label>
+                            <input type="date" id="clientDob" name="dob" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white" required>
+                        </div>
+                        <div>
+                            <label for="clientGender" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Gender</label>
+                            <select id="clientGender" name="gender" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white" required>
+                                <option value="" disabled selected>Select Gender</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="prefer-not-to-say">Prefer not to say</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="clientMobile" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mobile Number</label>
+                            <input type="text" id="clientMobile" name="mobile" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white" required pattern="[0-9]{10}" title="Please enter a valid 10-digit mobile number">
+                        </div>
+                        <div>
+                            <label for="clientAltMobile" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Secondary Mobile Number (Optional)</label>
+                            <input type="text" id="clientAltMobile" name="altMobile" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white" pattern="[0-9]{10}" title="Please enter a valid 10-digit mobile number">
+                        </div>
+                        <div>
+                            <label for="clientAddress" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Address</label>
+                            <textarea id="clientAddress" name="address" rows="2" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white" required></textarea>
+                        </div>
+                        <div>
+                            <label for="clientState" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">State</label>
+                            <select id="clientState" name="state" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white" required onchange="updateCitiesInModal()">
+                                <option disabled selected>Select State</option>
+                                <option value="andhra-pradesh">Andhra Pradesh</option>
+                                <option value="arunachal-pradesh">Arunachal Pradesh</option>
+                                <option value="assam">Assam</option>
+                                <option value="bihar">Bihar</option>
+                                <option value="chhattisgarh">Chhattisgarh</option>
+                                <option value="goa">Goa</option>
+                                <option value="gujarat">Gujarat</option>
+                                <option value="haryana">Haryana</option>
+                                <option value="himachal-pradesh">Himachal Pradesh</option>
+                                <option value="jharkhand">Jharkhand</option>
+                                <option value="karnataka">Karnataka</option>
+                                <option value="kerala">Kerala</option>
+                                <option value="madhya-pradesh">Madhya Pradesh</option>
+                                <option value="maharashtra">Maharashtra</option>
+                                <option value="manipur">Manipur</option>
+                                <option value="meghalaya">Meghalaya</option>
+                                <option value="mizoram">Mizoram</option>
+                                <option value="nagaland">Nagaland</option>
+                                <option value="odisha">Odisha</option>
+                                <option value="punjab">Punjab</option>
+                                <option value="rajasthan">Rajasthan</option>
+                                <option value="sikkim">Sikkim</option>
+                                <option value="tamil-nadu">Tamil Nadu</option>
+                                <option value="telangana">Telangana</option>
+                                <option value="tripura">Tripura</option>
+                                <option value="uttar-pradesh">Uttar Pradesh</option>
+                                <option value="uttarakhand">Uttarakhand</option>
+                                <option value="west-bengal">West Bengal</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="clientCity" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">City</label>
+                            <select id="clientCity" name="city" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white" required>
+                                <option disabled selected>Select City</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="clientPincode" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">PIN Code</label>
+                            <input type="text" id="clientPincode" name="pincode" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white" required pattern="[0-9]{6}" title="Please enter a valid 6-digit PIN code">
+                        </div>
+                        <div>
+                            <label for="clientPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+                            <input type="password" id="clientPassword" name="password" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white" required pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$" title="Password must be at least 8 characters long and include uppercase, lowercase, number and special character">
+                        </div>
+                        <div>
+                            <label for="clientConfirmPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm Password</label>
+                            <input type="password" id="clientConfirmPassword" name="confirmPassword" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white" required>
+                        </div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            <p class="mb-1">Password requirements:</p>
+                            <ul class="list-disc pl-5 text-xs">
+                                <li>At least 8 characters long</li>
+                                <li>Must contain at least one uppercase letter</li>
+                                <li>Must contain at least one lowercase letter</li>
+                                <li>Must contain at least one number</li>
+                                <li>Must contain at least one special character (@$!%*?&)</li>
+                            </ul>
+                        </div>
+                        <div class="flex items-center mt-2">
+                            <input type="checkbox" id="sendWelcomeMessage" name="sendWelcomeMessage" class="h-4 w-4 text-indigo-600 dark:text-indigo-500">
+                            <label for="sendWelcomeMessage" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Send welcome message</label>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex space-x-3">
+                        <button type="button" id="cancelAddClient" class="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition">Cancel</button>
+                        <button type="submit" class="flex-1 px-4 py-2 gradient-bg text-white rounded-lg font-medium hover:opacity-90 transition">Add Client</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Settings Modal -->
+    <div id="paymentSettingsModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div class="absolute inset-0 bg-black bg-opacity-50 dark:bg-opacity-70"></div>
+        <div class="relative max-w-md mx-auto my-8 bg-white dark:bg-darkcard rounded-xl shadow-xl">
+            <div class="p-6 max-h-[80vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4 sticky top-0 bg-white dark:bg-darkcard z-10 py-2">
+                    <h2 class="text-xl font-semibold text-gray-800 dark:text-white">Payment Settings</h2>
+                    <div class="flex items-center space-x-2">
+                        <button id="debugPaymentSettings" class="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
+                        <button id="closePaymentSettingsModal" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <form id="paymentSettingsForm" class="space-y-4">
+                    <div class="mb-4">
+                        <label for="serviceFee" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Service Fee</label>
+                        <div class="mt-1 relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span class="text-gray-500 dark:text-gray-400">₹</span>
+                            </div>
+                            <input type="number" id="serviceFee" name="serviceFee" class="block w-full pl-7 pr-12 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" placeholder="0" min="0" required>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">This is the base service fee that will be applied to all payment options.</p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Standard Payment Options</label>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">These are the default payment periods available to clients. You can set a specific amount for each period.</p>
+                    </div>
+                    
+                    <div id="paymentSettingsContainer" class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <!-- Payment options will be loaded here dynamically -->
+                    </div>
+                    
+                    <!-- Add Custom Payment Options section -->
+                    <div class="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
+                        <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Custom Payment Options</h3>
+                        
+                        <!-- Current Custom Options -->
+                        <div id="currentPaymentOptionsContainer" class="mb-4 border border-gray-200 dark:border-gray-700 rounded-lg p-3 max-h-40 overflow-y-auto">
+                            <!-- Existing custom payment options will be rendered here -->
+                            <div class="p-3 text-center text-gray-500 dark:text-gray-400">No custom payment options added yet</div>
+                        </div>
+                        
+                        <!-- Add New Custom Option -->
+                        <div class="flex space-x-2 mb-4">
+                            <input type="text" id="newPaymentOptionName" placeholder="Option Name" class="flex-1 block px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
+                            <input type="number" id="newPaymentOptionDays" placeholder="Days" class="block w-20 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" min="1">
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span class="text-gray-500 dark:text-gray-400">₹</span>
+                                </div>
+                                <input type="number" id="newPaymentOptionAmount" placeholder="Amount" class="block w-24 pl-7 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" min="0">
+                            </div>
+                            <button type="button" id="addCustomOption" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-4 mt-6 sticky bottom-0 bg-white dark:bg-darkcard py-3">
+                        <button type="button" id="cancelPaymentSettings" class="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition">Cancel</button>
+                        <button type="submit" id="savePaymentSettingsBtn" class="flex-1 px-4 py-2 gradient-bg text-white rounded-lg font-medium hover:opacity-90 transition">Save Settings</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toastNotification" class="fixed bottom-4 right-4 z-50 bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 flex items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span id="toastMessage">Operation completed successfully!</span>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+    <script src="ownerDashboard.js"></script>
+    <!-- Smart Fee Calculator Script -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+            const calculateSmartFeesBtn = document.getElementById('calculateSmartFeesBtn');
+            const discountStrategySelect = document.getElementById('discountStrategy');
+            
+            if (calculateSmartFeesBtn) {
+                calculateSmartFeesBtn.addEventListener('click', async function() {
+                    try {
+                        // Get the base fee value
+        const serviceFeeInput = document.getElementById('serviceFee');
+                        const baseFeeValue = serviceFeeInput.value.trim();
+                        const baseFee = Number(baseFeeValue);
+                        
+                        if (!baseFeeValue || isNaN(baseFee) || baseFee <= 0) {
+                            showToast('Please enter a valid base service fee', false);
+                return;
+            }
+            
+                        // Get the selected discount strategy
+                        const discountStrategy = discountStrategySelect.value;
+                        
+                        // Show loading state
+                        calculateSmartFeesBtn.disabled = true;
+                        calculateSmartFeesBtn.innerHTML = '<svg class="animate-spin h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Calculating...';
+                        
+                        // Call the smart fee API
+                        const response = await fetch('http://localhost:3000/api/calculate-smart-fees', {
+                            method: 'POST',
+                    headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                baseFee,
+                                discountStrategy
+                            })
+                        });
+                        
+                const data = await response.json();
+                        
+                        // Reset button state
+                        calculateSmartFeesBtn.disabled = false;
+                        calculateSmartFeesBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg> Calculate Smart Fees';
+                        
+                        if (data.success) {
+                            // Update the payment settings with the calculated values
+                            const { monthly, quarterly, halfYearly, yearly } = data.fees;
+                            
+                            // Find existing payment settings for these periods or create new ones
+                            const settingsToUpdate = [
+                                { name: 'Monthly', amount: monthly },
+                                { name: 'Quarterly', amount: quarterly },
+                                { name: 'Half-Yearly', amount: halfYearly },
+                                { name: 'Yearly', amount: yearly }
+                            ];
+                            
+                            // Get currentPaymentSettings from the window object
+                            let currentPaymentSettings = window.currentPaymentSettings || [];
+                            
+                            // Update current payment settings
+                            for (const newSetting of settingsToUpdate) {
+                                // Check if this payment setting already exists
+                                const existingIndex = currentPaymentSettings.findIndex(s => 
+                                    typeof s === 'object' && 
+                                    s.name && 
+                                    s.name.toLowerCase() === newSetting.name.toLowerCase()
+                                );
+                                
+                                if (existingIndex >= 0) {
+                                    // Update existing setting
+                                    currentPaymentSettings[existingIndex].amount = newSetting.amount;
+                    } else {
+                                    // Add new setting
+                                    currentPaymentSettings.push(newSetting);
+                                }
+                            }
+                    
+                    // Update the global variable
+                    window.currentPaymentSettings = currentPaymentSettings;
+                    
+                            // Re-render the payment settings display
+                            if (typeof renderPaymentSettings === 'function') {
+                    renderPaymentSettings();
+                            }
+                            
+                            showToast('Smart fees calculated successfully!');
+                            
+                            // Show the calculated fees in a sweet alert for better visibility
+                            Swal.fire({
+                                title: 'Smart Fee Calculation',
+                                html: `
+                                    <div class="text-left mb-4">
+                                        <p class="mb-1"><strong>Base Fee:</strong> ₹${baseFee}</p>
+                                        <p class="mb-1"><strong>Strategy:</strong> ${data.discountStrategy}</p>
+                                    </div>
+                                    <table class="w-full border-collapse">
+                                        <thead>
+                                            <tr>
+                                                <th class="border px-2 py-1 text-left">Plan</th>
+                                                <th class="border px-2 py-1 text-right">Fee (₹)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td class="border px-2 py-1">Monthly</td>
+                                                <td class="border px-2 py-1 text-right">${monthly}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="border px-2 py-1">Quarterly</td>
+                                                <td class="border px-2 py-1 text-right">${quarterly}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="border px-2 py-1">Half-Yearly</td>
+                                                <td class="border px-2 py-1 text-right">${halfYearly}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="border px-2 py-1">Yearly</td>
+                                                <td class="border px-2 py-1 text-right">${yearly}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                `,
+                                icon: 'success',
+                                confirmButtonText: 'Apply These Fees'
+                            });
+                    } else {
+                            showToast(data.message || 'Failed to calculate smart fees', false);
+                    }
+                } catch (error) {
+                        console.error('Error calculating smart fees:', error);
+                        calculateSmartFeesBtn.disabled = false;
+                        calculateSmartFeesBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg> Calculate Smart Fees';
+                        showToast('Error calculating smart fees. Please try again.', false);
+                }
+            });
+        }
+
+        // Payment Settings Form Submission
+        const paymentSettingsForm = document.getElementById('paymentSettingsForm');
+        if (paymentSettingsForm) {
+            paymentSettingsForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                // Get the service fee value
+                const serviceFee = document.getElementById('serviceFee').value;
+                
+                // Also get all the payment option amounts
+                const monthlyAmount = document.getElementById('monthlyAmount')?.value || 0;
+                const quarterlyAmount = document.getElementById('quarterlyAmount')?.value || 0;
+                const halfYearlyAmount = document.getElementById('halfYearlyAmount')?.value || 0;
+                const yearlyAmount = document.getElementById('yearlyAmount')?.value || 0;
+                
+                // Validate service fee
+                if (!serviceFee || isNaN(serviceFee) || serviceFee <= 0) {
+                    showToast('Please enter a valid service fee amount', false);
+                    return;
+                }
+                
+                // Ensure we have payment settings
+                if (!window.currentPaymentSettings || window.currentPaymentSettings.length === 0) {
+                    showToast('Please add at least one payment setting', false);
+                    return;
+                }
+
+                // Show loading state
+                const submitButton = document.getElementById('savePaymentSettingsBtn');
+                const originalButtonText = submitButton.innerHTML;
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Saving...';
+                
+                try {
+                    // Get the token from localStorage
+                    const token = localStorage.getItem('ownerToken');
+                    if (!token) {
+                        throw new Error('Not authenticated');
+                    }
+                    
+                    // Create the update payload with full set of payment settings
+                    const paymentSettings = window.currentPaymentSettings || [];
+                    
+                    // Create a comma-separated string of payment setting names for backward compatibility
+                    const paymentSettingNames = paymentSettings.map(setting => setting.name);
+                    const paymentSetting = paymentSettingNames.join(',');
+                    
+                    // Create the payload with all necessary fields
+                    const payload = {
+                        serviceFee: Number(serviceFee),
+                        monthlyAmount: Number(monthlyAmount),
+                        quarterlyAmount: Number(quarterlyAmount),
+                        halfYearlyAmount: Number(halfYearlyAmount),
+                        yearlyAmount: Number(yearlyAmount),
+                        // Include the current payment settings
+                        paymentSettings: paymentSettings,
+                        paymentSetting: paymentSetting
+                    };
+                    
+                    console.log('Sending payment settings update:', payload);
+                    
+                    // Send the update request
+                    const response = await fetch('http://localhost:3000/api/owner/payment-settings', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showToast('Payment settings updated successfully');
+                        // Close the modal after successful update
+                        closePaymentSettingsModal();
+                        
+                        // Reload settings to verify the changes
+                        setTimeout(() => {
+                            loadPaymentSettings();
+                        }, 500);
+                    } else {
+                        throw new Error(data.message || 'Failed to update payment settings');
+                    }
+                } catch (error) {
+                    console.error('Error updating payment settings:', error);
+                    showToast(error.message || 'Failed to update payment settings', false);
+                } finally {
+                    // Reset button state
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalButtonText;
+                }
+            });
+        }
+
+        // Function to close the payment settings modal
+        function closePaymentSettingsModal() {
+            const modal = document.getElementById('paymentSettingsModal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }
+
+        // Add event listeners for close buttons
+        const closePaymentSettingsModalBtn = document.getElementById('closePaymentSettingsModal');
+        const cancelPaymentSettings = document.getElementById('cancelPaymentSettings');
+        
+        if (closePaymentSettingsModalBtn) {
+            closePaymentSettingsModalBtn.addEventListener('click', closePaymentSettingsModal);
+        }
+        
+        if (cancelPaymentSettings) {
+            cancelPaymentSettings.addEventListener('click', closePaymentSettingsModal);
+        }
+    });
+
+    // Function to update payment amount
+    async function updatePaymentAmount(period, amount) {
+        // Validate the amount
+        if (!amount || isNaN(amount) || Number(amount) < 0) {
+            showToast('Please enter a valid amount greater than or equal to 0', false);
+            return;
+        }
+        
+        try {
+            const token = localStorage.getItem('ownerToken');
+            if (!token) {
+                throw new Error('Not authenticated');
+            }
+
+            // First get the current settings to obtain the existing serviceFee and paymentSetting
+            const getResponse = await fetch('http://localhost:3000/api/owner/payment-settings', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            const getData = await getResponse.json();
+            if (!getData.success) {
+                throw new Error('Failed to get current settings');
+            }
+            
+            // Get the current settings data
+            const settings = getData.paymentSettings;
+            
+            // Explicitly extract important fields to ensure they're preserved
+            const serviceFee = settings.serviceFee || 0;
+            const paymentSettings = settings.paymentSettings || [];
+            const paymentSetting = settings.paymentSetting || '';
+            
+            // Create the payload with all necessary fields
+            const payload = {
+                serviceFee: serviceFee,
+                paymentSettings: paymentSettings,
+                paymentSetting: paymentSetting,
+                // Keep all existing payment amounts
+                monthlyAmount: settings.monthlyAmount || 0,
+                quarterlyAmount: settings.quarterlyAmount || 0,
+                halfYearlyAmount: settings.halfYearlyAmount || 0,
+                yearlyAmount: settings.yearlyAmount || 0
+            };
+            
+            // Override only the specific field being updated
+            if (period === 'monthly') {
+                payload.monthlyAmount = Number(amount);
+            } else if (period === 'quarterly') {
+                payload.quarterlyAmount = Number(amount);
+            } else if (period === 'halfYearly') {
+                payload.halfYearlyAmount = Number(amount);
+            } else if (period === 'yearly') {
+                payload.yearlyAmount = Number(amount);
+            }
+
+            console.log('Sending payment amount update:', JSON.stringify(payload));
+
+            const response = await fetch('http://localhost:3000/api/owner/payment-settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast(`${period.charAt(0).toUpperCase() + period.slice(1)} amount updated successfully`);
+                console.log('Update successful:', data);
+            } else {
+                throw new Error(data.message || 'Failed to update amount');
+            }
+        } catch (error) {
+            console.error('Error updating payment amount:', error);
+            showToast(error.message || 'Failed to update amount', false);
+        }
+    }
+
+    // Function to load payment settings from the server
+    async function loadPaymentSettings() {
+        try {
+            const token = localStorage.getItem('ownerToken');
+            if (!token) {
+                throw new Error('Not authenticated');
+            }
+
+            // Clear current payment options
+            const container = document.getElementById('paymentSettingsContainer');
+            container.innerHTML = '<div class="p-3 text-center text-gray-500 dark:text-gray-400 col-span-2"><div class="animate-pulse">Loading payment options...</div></div>';
+
+            const response = await fetch('http://localhost:3000/api/owner/payment-settings', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                // The server returns paymentSettings object containing all settings
+                const settings = data.paymentSettings;
+                console.log('FULL SERVER RESPONSE:', data);
+                console.log('Loaded payment settings from server:', settings);
+                
+                // Clear the container
+                container.innerHTML = '';
+                
+                // Get the payment setting string and parse it if available
+                const paymentSettingStr = settings.paymentSetting || '';
+                console.log('Payment setting string:', paymentSettingStr);
+                
+                // Parse the selected payment options from the paymentSetting string
+                const selectedOptions = paymentSettingStr.split(',').map(option => option.trim().toLowerCase());
+                console.log('Selected payment options:', selectedOptions);
+                
+                // Initialize or update the global currentPaymentSettings array
+                window.currentPaymentSettings = settings.paymentSettings && Array.isArray(settings.paymentSettings) 
+                    ? settings.paymentSettings 
+                    : [];
+                    
+                console.log('Updated currentPaymentSettings:', window.currentPaymentSettings);
+                
+                // Define all standard payment options
+                const standardOptions = [
+                    { period: 'monthly', label: 'per month', color: 'green' },
+                    { period: 'quarterly', label: 'per 3 months', color: 'blue' },
+                    { period: 'halfYearly', label: 'per 6 months', color: 'purple' },
+                    { period: 'yearly', label: 'per year', color: 'orange' }
+                ];
+                
+                // Create each standard payment option element, but only for selected options
+                const filteredOptions = standardOptions.filter(option => 
+                    selectedOptions.includes(option.period) || 
+                    selectedOptions.includes(option.period.replace('yearly', 'year')) || 
+                    selectedOptions.includes('half-yearly') && option.period === 'halfYearly'
+                );
+                
+                // If no options are available, show a message
+                if (filteredOptions.length === 0) {
+                    container.innerHTML = '<div class="p-3 text-center text-gray-500 dark:text-gray-400 col-span-2">No standard payment options configured during registration</div>';
+                } else {
+                    // Create each selected standard payment option element
+                    for (const option of filteredOptions) {
+                        const amount = settings[option.period + 'Amount'] || 0;
+                        container.appendChild(createPaymentOptionElement(
+                            option.period, 
+                            amount, 
+                            option.label, 
+                            option.color
+                        ));
+                    }
+                }
+                
+                // Also update the service fee input field if it exists
+                const serviceFeeInput = document.getElementById('serviceFee');
+                if (serviceFeeInput) {
+                    serviceFeeInput.value = settings.serviceFee || 0;
+                }
+            } else {
+                throw new Error(data.message || 'Failed to load payment settings');
+            }
+        } catch (error) {
+            console.error('Error loading payment settings:', error);
+            showToast(error.message || 'Failed to load payment settings', false);
+            
+            // Show error message
+            const container = document.getElementById('paymentSettingsContainer');
+            container.innerHTML = '<div class="p-3 text-center text-red-500 dark:text-red-400 col-span-2">Failed to load payment options. Please try again.</div>';
+        }
+    }
+
+    // Helper function to create a payment option element
+    function createPaymentOptionElement(period, amount, label, color) {
+        const div = document.createElement('div');
+        div.className = `p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm hover:shadow-md transition-all duration-200`;
+        
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'flex items-center justify-between mb-2';
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'text-sm font-medium text-gray-700 dark:text-gray-300';
+        nameSpan.textContent = period.charAt(0).toUpperCase() + period.slice(1);
+        
+        const labelSpan = document.createElement('span');
+        labelSpan.className = `px-2 py-0.5 bg-${color}-100 text-${color}-800 dark:bg-${color}-900 dark:text-${color}-200 rounded text-xs`;
+        labelSpan.textContent = label;
+        
+        titleDiv.appendChild(nameSpan);
+        titleDiv.appendChild(labelSpan);
+        
+        const inputDiv = document.createElement('div');
+        inputDiv.className = 'flex items-center';
+        
+        const currencySpan = document.createElement('span');
+        currencySpan.className = 'text-lg text-gray-500 dark:text-gray-400';
+        currencySpan.textContent = '₹';
+        
+        const input = document.createElement('input');
+        input.type = 'text'; // Use text instead of number to avoid browser validation
+        input.id = `${period}Amount`;
+        input.className = 'text-xl font-bold text-gray-800 dark:text-white bg-transparent border-b border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none px-1 py-0.5 w-24';
+        input.value = amount || 0;
+        input.inputMode = 'decimal'; // Still give numeric keyboard on mobile
+        
+        // Add custom validation instead of browser validation
+        input.onchange = function() {
+            const value = this.value.trim();
+            const numValue = parseFloat(value);
+            
+            // Only validate and update if it's a valid number
+            if (value && !isNaN(numValue) && numValue >= 0) {
+                updatePaymentAmount(period, numValue);
+            } else {
+                // Reset to previous value if invalid
+                this.value = amount || 0;
+                showToast('Please enter a valid amount', false);
+            }
+        };
+        
+        inputDiv.appendChild(currencySpan);
+        inputDiv.appendChild(input);
+        
+        div.appendChild(titleDiv);
+        div.appendChild(inputDiv);
+        
+        return div;
+    }
+
+    // Add a refresh button event listener
+    document.addEventListener('DOMContentLoaded', function() {
+        const refreshButton = document.getElementById('refreshPaymentOptions');
+        if (refreshButton) {
+            refreshButton.addEventListener('click', loadPaymentSettings);
+        }
+        
+        // Load payment settings when the modal is opened
+        const paymentsLink = document.getElementById('paymentsLink');
+        if (paymentsLink) {
+            paymentsLink.addEventListener('click', function() {
+                // Delay loading to ensure modal is visible first
+                setTimeout(loadPaymentSettings, 100);
+            });
+        }
+        
+        // Also load when payment settings modal is opened
+        const modal = document.getElementById('paymentSettingsModal');
+        if (modal) {
+            // Watch for modal visibility changes
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.attributeName === 'class') {
+                        if (!modal.classList.contains('hidden')) {
+                            // Modal is visible
+                            loadPaymentSettings();
+                        }
+                    }
+                });
+            });
+            
+            observer.observe(modal, { attributes: true });
+        }
+    });
+
+    // Function to add a new payment option to the list
+    function addPaymentOption() {
+        // Get name and amount from form
+        const paymentOptionName = document.getElementById('newPaymentOptionName').value;
+        const paymentOptionAmount = document.getElementById('newPaymentOptionAmount').value;
+        
+        // Validate inputs
+        if (!paymentOptionName.trim()) {
+            showToast('Please enter a valid payment option name', false);
+            return;
+        }
+        
+        const amount = Number(paymentOptionAmount);
+        if (isNaN(amount) || amount < 0) {
+            showToast('Please enter a valid payment amount', false);
+            return;
+        }
+        
+        // Create payment option object
+        const newSetting = {
+            name: paymentOptionName.trim(),
+            amount: amount
+        };
+        
+        // Initialize currentPaymentSettings if not already done
+        if (!window.currentPaymentSettings) {
+            window.currentPaymentSettings = [];
+        }
+        
+        // Check if this payment option already exists
+        const existingIndex = currentPaymentSettings.findIndex(s => 
+            s.name.toLowerCase() === newSetting.name.toLowerCase()
+        );
+        
+        // Update or add to current payment settings
+        if (existingIndex >= 0) {
+            // Update existing item
+            currentPaymentSettings[existingIndex].amount = newSetting.amount;
+            showToast(`Updated payment option: ${newSetting.name}`);
+        } else {
+            // Add new item
+            currentPaymentSettings.push(newSetting);
+            showToast(`Added payment option: ${newSetting.name}`);
+        }
+        
+        // Update the global variable
+        window.currentPaymentSettings = currentPaymentSettings;
+        console.log('Updated currentPaymentSettings:', window.currentPaymentSettings);
+        
+        // Render the updated list
+        if (typeof renderPaymentSettings === 'function') {
+            renderPaymentSettings();
+        }
+        
+        // Clear form fields
+        document.getElementById('newPaymentOptionName').value = '';
+        document.getElementById('newPaymentOptionAmount').value = '';
+    }
+
+    // Function to render the current payment settings
+    function renderPaymentSettings() {
+        // Get the container for custom payment options
+        const container = document.getElementById('currentPaymentOptionsContainer');
+        if (!container) return;
+        
+        // Clear the container
+        container.innerHTML = '';
+        
+        // Check if we have any payment settings
+        if (!window.currentPaymentSettings || window.currentPaymentSettings.length === 0) {
+            container.innerHTML = '<div class="p-3 text-center text-gray-500 dark:text-gray-400">No custom payment options added yet</div>';
+            return;
+        }
+        
+        // Create a list element
+        const list = document.createElement('div');
+        list.className = 'space-y-2';
+        
+        // Add each payment setting as a list item
+        window.currentPaymentSettings.forEach((setting, index) => {
+            const item = document.createElement('div');
+            item.className = 'flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded';
+            
+            const infoDiv = document.createElement('div');
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'font-medium text-gray-800 dark:text-gray-200';
+            nameSpan.textContent = setting.name;
+            
+            const amountSpan = document.createElement('span');
+            amountSpan.className = 'ml-3 text-gray-600 dark:text-gray-400';
+            amountSpan.textContent = `₹${setting.amount}`;
+            
+            infoDiv.appendChild(nameSpan);
+            infoDiv.appendChild(amountSpan);
+            
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300';
+            deleteButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>';
+            deleteButton.setAttribute('aria-label', `Delete ${setting.name}`);
+            deleteButton.onclick = function() {
+                // Remove this payment setting
+                window.currentPaymentSettings = window.currentPaymentSettings.filter((_, i) => i !== index);
+                // Re-render the list
+                renderPaymentSettings();
+                showToast(`Removed payment option: ${setting.name}`);
+            };
+            
+            item.appendChild(infoDiv);
+            item.appendChild(deleteButton);
+            
+            list.appendChild(item);
+        });
+        
+        container.appendChild(list);
+    }
+
+    // Payments Section Functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Variables for pagination
+        let currentPaymentPage = 1;
+        const paymentsPerPage = 10;
+        let totalPayments = 0;
+        let filteredPayments = [];
+        
+        // DOM Elements
+        const paymentsSection = document.getElementById('payments-section');
+        const paymentsLink = document.getElementById('paymentsLink');
+        const recordPaymentBtn = document.getElementById('recordPaymentBtn');
+        const recordPaymentModal = document.getElementById('recordPaymentModal');
+        const closeRecordPaymentModal = document.getElementById('closeRecordPaymentModal');
+        const cancelRecordPayment = document.getElementById('cancelRecordPayment');
+        const recordPaymentForm = document.getElementById('recordPaymentForm');
+        const paymentPeriodFilter = document.getElementById('paymentPeriodFilter');
+        const paymentSearch = document.getElementById('paymentSearch');
+        
+        // Initialize date field with current date
+        if (document.getElementById('paymentDate')) {
+            const today = new Date();
+            const formattedDate = today.toISOString().split('T')[0];
+            document.getElementById('paymentDate').value = formattedDate;
+        }
+        
+        // Note: Payment link click handling is now in the ownerDashboard.js file
+        // to open the payment settings modal directly
+        
+        // Fetch payment statistics
+        async function loadPaymentStats() {
+            try {
+                const token = localStorage.getItem('ownerToken');
+                if (!token) {
+                    showToast('Authentication required', false);
+                    return;
+                }
+                
+                const response = await fetch('http://localhost:3000/api/payments/stats', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Update statistics in the UI
+                    document.getElementById('totalMonthPayments').textContent = `₹${data.stats.monthTotal.toLocaleString()}`;
+                    document.getElementById('paymentCountMonth').textContent = `${data.stats.monthCount} payments`;
+                    
+                    document.getElementById('overdueAmount').textContent = `₹${data.stats.overdueTotal.toLocaleString()}`;
+                    document.getElementById('overdueCount').textContent = `${data.stats.overdueCount} clients`;
+                    
+                    document.getElementById('upcomingAmount').textContent = `₹${data.stats.upcomingTotal.toLocaleString()}`;
+                    document.getElementById('upcomingCount').textContent = `${data.stats.upcomingCount} clients`;
+                    
+                    document.getElementById('totalYearPayments').textContent = `₹${data.stats.yearTotal.toLocaleString()}`;
+                    document.getElementById('paymentCountYear').textContent = `${data.stats.yearCount} payments`;
+                } else {
+                    showToast('Failed to load payment statistics', false);
+                }
+            } catch (error) {
+                console.error('Error loading payment stats:', error);
+                showToast('Error loading payment statistics', false);
+            }
+        }
+        
+        // Fetch payment history
+        async function loadPaymentHistory(page = 1, filter = 'month', searchTerm = '') {
+            try {
+                const token = localStorage.getItem('ownerToken');
+                if (!token) {
+                    showToast('Authentication required', false);
+                    return;
+                }
+                
+                // Show loading state
+                document.getElementById('paymentTable').innerHTML = `
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                            <div class="flex items-center justify-center">
+                                <svg class="animate-spin h-5 w-5 mr-3 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Loading payment history...
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                
+                // Build query parameters
+                const params = new URLSearchParams({
+                    page,
+                    limit: paymentsPerPage,
+                    filter,
+                    search: searchTerm
+                });
+                
+                // Fetch data from API
+                const response = await fetch(`http://localhost:3000/api/payments?${params.toString()}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Store data for pagination
+                    filteredPayments = data.payments;
+                    totalPayments = data.total;
+                    currentPaymentPage = page;
+                    
+                    // Update the table
+                    renderPaymentsTable(filteredPayments);
+                    
+                    // Update pagination
+                    renderPaymentPagination(totalPayments, currentPaymentPage, paymentsPerPage);
+                    
+                    // Update payment count
+                    document.getElementById('paymentCount').textContent = totalPayments;
+                } else {
+                    // Show error message in table
+                    document.getElementById('paymentTable').innerHTML = `
+                        <tr>
+                            <td colspan="7" class="px-6 py-4 text-center text-red-500">
+                                Failed to load payment history: ${data.message || 'Unknown error'}
+                            </td>
+                        </tr>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading payment history:', error);
+                
+                // Show error message
+                document.getElementById('paymentTable').innerHTML = `
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center text-red-500">
+                            Error loading payment history. Please try again.
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+        
+        // Render payments table
+        function renderPaymentsTable(payments) {
+            const tableBody = document.getElementById('paymentTable');
+            
+            if (!payments || payments.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                            No payment records found.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            let html = '';
+            
+            payments.forEach(payment => {
+                // Format the date
+                const paymentDate = new Date(payment.date);
+                const formattedDate = paymentDate.toLocaleDateString('en-IN');
+                
+                // Format the amount
+                const formattedAmount = payment.amount.toLocaleString('en-IN');
+                
+                // Format the payment method
+                const methodMap = {
+                    'cash': 'Cash',
+                    'upi': 'UPI',
+                    'bank_transfer': 'Bank Transfer',
+                    'card': 'Card',
+                    'cheque': 'Cheque',
+                    'other': 'Other'
+                };
+                
+                // Format the payment period
+                const periodMap = {
+                    'monthly': 'Monthly',
+                    'quarterly': 'Quarterly',
+                    'half_yearly': 'Half Yearly',
+                    'yearly': 'Yearly',
+                    'one_time': 'One Time'
+                };
+                
+                // Status badge class
+                const statusClass = payment.status === 'completed' ? 
+                    'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 
+                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+                
+                html += `
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="ml-3">
+                                    <div class="text-sm font-medium text-gray-900 dark:text-white">${payment.client.name}</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">${payment.client.mobile || payment.client.email}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${formattedDate}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">₹${formattedAmount}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${methodMap[payment.method] || payment.method}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${periodMap[payment.period] || payment.period}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
+                                ${payment.status === 'completed' ? 'Completed' : 'Pending'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 mr-3 view-payment" data-id="${payment._id}">View</button>
+                            <button class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 delete-payment" data-id="${payment._id}">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tableBody.innerHTML = html;
+            
+            // Add event listeners for view and delete buttons
+            document.querySelectorAll('.view-payment').forEach(button => {
+                button.addEventListener('click', function() {
+                    const paymentId = this.getAttribute('data-id');
+                    viewPaymentDetails(paymentId);
+                });
+            });
+            
+            document.querySelectorAll('.delete-payment').forEach(button => {
+                button.addEventListener('click', function() {
+                    const paymentId = this.getAttribute('data-id');
+                    deletePayment(paymentId);
+                });
+            });
+        }
+        
+        // Render pagination controls
+        function renderPaymentPagination(total, currentPage, perPage) {
+            const container = document.getElementById('paymentPagination');
+            const totalPages = Math.ceil(total / perPage);
+            
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            let html = '';
+            
+            // Previous button
+            if (currentPage > 1) {
+                html += `
+                    <button class="px-3 py-1 rounded-md bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" data-page="${currentPage - 1}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                `;
+            }
+            
+            // Page numbers
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+            
+            // Adjust start page if end page is maxed out
+            if (endPage === totalPages) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const isActive = i === currentPage;
+                const buttonClass = isActive
+                    ? 'px-3 py-1 rounded-md bg-indigo-600 text-white'
+                    : 'px-3 py-1 rounded-md bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700';
+                
+                html += `<button class="${buttonClass}" data-page="${i}">${i}</button>`;
+            }
+            
+            // Next button
+            if (currentPage < totalPages) {
+                html += `
+                    <button class="px-3 py-1 rounded-md bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" data-page="${currentPage + 1}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                `;
+            }
+            
+            container.innerHTML = html;
+            
+            // Add event listeners to pagination buttons
+            container.querySelectorAll('button').forEach(button => {
+                button.addEventListener('click', function() {
+                    const page = parseInt(this.getAttribute('data-page'));
+                    const filter = paymentPeriodFilter.value;
+                    const searchTerm = paymentSearch.value;
+                    loadPaymentHistory(page, filter, searchTerm);
+                });
+            });
+        }
+        
+        // View payment details
+        function viewPaymentDetails(paymentId) {
+            const payment = filteredPayments.find(p => p._id === paymentId);
+            
+            if (!payment) {
+                showToast('Payment not found', false);
+                return;
+            }
+            
+            // Format the date
+            const paymentDate = new Date(payment.date);
+            const formattedDate = paymentDate.toLocaleDateString('en-IN');
+            
+            // Format method and period
+            const methodMap = {
+                'cash': 'Cash',
+                'upi': 'UPI',
+                'bank_transfer': 'Bank Transfer',
+                'card': 'Card',
+                'cheque': 'Cheque',
+                'other': 'Other'
+            };
+            
+            const periodMap = {
+                'monthly': 'Monthly',
+                'quarterly': 'Quarterly',
+                'half_yearly': 'Half Yearly',
+                'yearly': 'Yearly',
+                'one_time': 'One Time'
+            };
+            
+            // Show details in a modal
+            Swal.fire({
+                title: 'Payment Details',
+                html: `
+                    <div class="text-left">
+                        <div class="mb-2">
+                            <span class="font-semibold">Client:</span> 
+                            ${payment.client.name}
+                        </div>
+                        <div class="mb-2">
+                            <span class="font-semibold">Amount:</span> 
+                            ₹${payment.amount.toLocaleString('en-IN')}
+                        </div>
+                        <div class="mb-2">
+                            <span class="font-semibold">Date:</span> 
+                            ${formattedDate}
+                        </div>
+                        <div class="mb-2">
+                            <span class="font-semibold">Method:</span> 
+                            ${methodMap[payment.method] || payment.method}
+                        </div>
+                        <div class="mb-2">
+                            <span class="font-semibold">Period:</span> 
+                            ${periodMap[payment.period] || payment.period}
+                        </div>
+                        <div class="mb-2">
+                            <span class="font-semibold">Status:</span> 
+                            <span class="${payment.status === 'completed' ? 'text-green-600' : 'text-yellow-600'}">
+                                ${payment.status === 'completed' ? 'Completed' : 'Pending'}
+                            </span>
+                        </div>
+                        ${payment.notes ? `
+                        <div class="mt-4">
+                            <span class="font-semibold">Notes:</span><br>
+                            <div class="mt-1 p-2 bg-gray-50 rounded">
+                                ${payment.notes}
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                `,
+                confirmButtonText: 'Close',
+                confirmButtonColor: '#4f46e5'
+            });
+        }
+        
+        // Delete payment
+        function deletePayment(paymentId) {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "You won't be able to revert this!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Yes, delete it!'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        const token = localStorage.getItem('ownerToken');
+                        if (!token) {
+                            showToast('Authentication required', false);
+                            return;
+                        }
+                        
+                        const response = await fetch(`http://localhost:3000/api/payments/${paymentId}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showToast('Payment deleted successfully');
+                            
+                            // Reload payment data
+                            loadPaymentStats();
+                            loadPaymentHistory(currentPaymentPage, paymentPeriodFilter.value, paymentSearch.value);
+                        } else {
+                            showToast(data.message || 'Failed to delete payment', false);
+                        }
+                    } catch (error) {
+                        console.error('Error deleting payment:', error);
+                        showToast('Error deleting payment', false);
+                    }
+                }
+            });
+        }
+        
+        // Load clients for the payment form
+        async function loadClientsForPayment() {
+            try {
+                const token = localStorage.getItem('ownerToken');
+                if (!token) {
+                    showToast('Authentication required', false);
+                    return;
+                }
+                
+                const response = await fetch('http://localhost:3000/api/clients', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const clients = data.clients;
+                    const clientSelect = document.getElementById('clientSelect');
+                    
+                    // Clear existing options
+                    while (clientSelect.options.length > 1) {
+                        clientSelect.remove(1);
+                    }
+                    
+                    // Add client options
+                    clients.forEach(client => {
+                        const option = document.createElement('option');
+                        option.value = client._id;
+                        option.textContent = client.fullname || client.name;
+                        clientSelect.appendChild(option);
+                    });
+                } else {
+                    showToast('Failed to load clients', false);
+                }
+            } catch (error) {
+                console.error('Error loading clients:', error);
+                showToast('Error loading clients', false);
+            }
+        }
+        
+        // Record Payment Modal
+        if (recordPaymentBtn) {
+            recordPaymentBtn.addEventListener('click', function() {
+                recordPaymentModal.classList.remove('hidden');
+                loadClientsForPayment();
+            });
+        }
+        
+        if (closeRecordPaymentModal) {
+            closeRecordPaymentModal.addEventListener('click', function() {
+                recordPaymentModal.classList.add('hidden');
+            });
+        }
+        
+        if (cancelRecordPayment) {
+            cancelRecordPayment.addEventListener('click', function() {
+                recordPaymentModal.classList.add('hidden');
+            });
+        }
+        
+        // Handle form submission
+        if (recordPaymentForm) {
+            recordPaymentForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                // Get form data
+                const formData = new FormData(recordPaymentForm);
+                const paymentData = {
+                    clientId: formData.get('clientId'),
+                    amount: parseFloat(formData.get('amount')),
+                    date: formData.get('date'),
+                    method: formData.get('method'),
+                    period: formData.get('period'),
+                    notes: formData.get('notes')
+                };
+                
+                // Validate data
+                if (!paymentData.clientId || isNaN(paymentData.amount) || paymentData.amount <= 0 || !paymentData.date) {
+                    showToast('Please fill in all required fields correctly', false);
+                    return;
+                }
+                
+                try {
+                    const token = localStorage.getItem('ownerToken');
+                    if (!token) {
+                        showToast('Authentication required', false);
+                        return;
+                    }
+                    
+                    // Show loading state
+                    const submitBtn = recordPaymentForm.querySelector('button[type="submit"]');
+                    const originalText = submitBtn.textContent;
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Processing...';
+                    
+                    // Send data to server
+                    const response = await fetch('http://localhost:3000/api/payments', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(paymentData)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    // Reset button state
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                    
+                    if (data.success) {
+                        showToast('Payment recorded successfully');
+                        
+                        // Close modal and reset form
+                        recordPaymentModal.classList.add('hidden');
+                        recordPaymentForm.reset();
+                        
+                        // Initialize date field with current date
+                        const today = new Date();
+                        const formattedDate = today.toISOString().split('T')[0];
+                        document.getElementById('paymentDate').value = formattedDate;
+                        
+                        // Reload payment data
+                        loadPaymentStats();
+                        loadPaymentHistory();
+                    } else {
+                        showToast(data.message || 'Failed to record payment', false);
+                    }
+                } catch (error) {
+                    console.error('Error recording payment:', error);
+                    showToast('Error recording payment', false);
+                    
+                    // Reset button state
+                    const submitBtn = recordPaymentForm.querySelector('button[type="submit"]');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Record Payment';
+                }
+            });
+        }
+        
+        // Payment filtering and search
+        if (paymentPeriodFilter) {
+            paymentPeriodFilter.addEventListener('change', function() {
+                loadPaymentHistory(1, this.value, paymentSearch.value);
+            });
+        }
+        
+        if (paymentSearch) {
+            // Debounce search input
+            let searchTimeout;
+            paymentSearch.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    loadPaymentHistory(1, paymentPeriodFilter.value, this.value);
+                }, 500);
+            });
+        }
+    });
+    </script>
+
+    <script>
+        // Function to load dashboard summary data
+        async function loadDashboardSummary() {
+            try {
+                console.log('Starting to load dashboard summary...');
+                const token = localStorage.getItem('ownerToken');
+                if (!token) {
+                    console.error('No authentication token found');
+                    return;
+                }
+                console.log('Token found, proceeding with API calls...');
+
+                // Fetch active clients data
+                console.log('Fetching active clients data...');
+                const clientsResponse = await fetch('http://localhost:3000/api/owner/clients', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                console.log('Clients API response status:', clientsResponse.status);
+                if (!clientsResponse.ok) {
+                    console.error('Failed to fetch clients data, status:', clientsResponse.status);
+                    throw new Error('Failed to fetch clients data');
+                }
+
+                const clientsData = await clientsResponse.json();
+                console.log('Clients data received:', clientsData);
+                
+                // Update active clients count based on response format
+                // Handle both success flag format and direct array format
+                if (clientsData) {
+                    let clients = [];
+                    
+                    if (clientsData.success && Array.isArray(clientsData.clients)) {
+                        // Format: { success: true, clients: [...] }
+                        clients = clientsData.clients;
+                    } else if (Array.isArray(clientsData)) {
+                        // Format: Direct array of clients
+                        clients = clientsData;
+                    }
+                    
+                    const activeClientsCount = clients.length;
+                    console.log('Setting active clients count to:', activeClientsCount);
+                    document.getElementById('active-clients-count').textContent = activeClientsCount;
+                    console.log('Active clients count set successfully');
+                    
+                    // Get service name from owner data
+                    const ownerData = JSON.parse(localStorage.getItem('ownerUser'));
+                    if (ownerData && ownerData.serviceName) {
+                        document.getElementById('service-name').textContent = `For ${ownerData.serviceName}`;
+                    }
+                } else {
+                    console.error('No clients data received from the API');
+                    document.getElementById('active-clients-count').textContent = '0';
+                }
+
+                // Fetch all approved requests to calculate upcoming payments
+                console.log('Fetching approved requests for upcoming payments...');
+                const requestsResponse = await fetch('http://localhost:3000/api/owner/requests?status=approved', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                console.log('Requests API response status:', requestsResponse.status);
+                if (!requestsResponse.ok) {
+                    console.error('Failed to fetch requests data, status:', requestsResponse.status);
+                    throw new Error('Failed to fetch requests data');
+                }
+
+                const requestsData = await requestsResponse.json();
+                console.log('Requests data received:', requestsData);
+                
+                // Process requests data for upcoming payments
+                let requests = [];
+                
+                if (requestsData.success && Array.isArray(requestsData.requests)) {
+                    // Format: { success: true, requests: [...] }
+                    requests = requestsData.requests;
+                } else if (Array.isArray(requestsData)) {
+                    // Format: Direct array of requests
+                    requests = requestsData;
+                }
+                
+                if (requests.length > 0) {
+                    // Calculate upcoming payments for next month
+                    const currentDate = new Date();
+                    const oneMonthLater = new Date();
+                    oneMonthLater.setMonth(currentDate.getMonth() + 1);
+                    
+                    let upcomingPaymentsCount = 0;
+                    let upcomingPaymentsAmount = 0;
+                    
+                    requests.forEach(request => {
+                        console.log('Processing request:', request._id, 'Next due date:', request.nextDueDate);
+                        
+                        if (request.nextDueDate) {
+                            const nextDueDate = new Date(request.nextDueDate);
+                            
+                            // Check if due date is within the next month
+                            if (nextDueDate <= oneMonthLater && nextDueDate >= currentDate) {
+                                upcomingPaymentsCount++;
+                                upcomingPaymentsAmount += Number(request.planAmount) || 0;
+                                console.log('Added to upcoming payments:', request.planAmount);
+                            }
+                        }
+                    });
+                    
+                    console.log('Total upcoming payments:', upcomingPaymentsCount, 'Total amount:', upcomingPaymentsAmount);
+                    
+                    // Update the UI
+                    document.getElementById('upcoming-payments-count').textContent = upcomingPaymentsCount;
+                    document.getElementById('upcoming-payments-amount').textContent = 
+                        `₹${upcomingPaymentsAmount.toLocaleString()}`;
+                } else {
+                    console.log('No approved requests found');
+                    document.getElementById('upcoming-payments-count').textContent = '0';
+                    document.getElementById('upcoming-payments-amount').textContent = '₹0';
+                }
+
+                // We'll still fetch the payments summary for overdue payments
+                console.log('Fetching payments summary for overdue data...');
+                const paymentsResponse = await fetch('http://localhost:3000/api/owner/payments/summary', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                console.log('Payments summary API response status:', paymentsResponse.status);
+                
+                if (paymentsResponse.ok) {
+                    const paymentsData = await paymentsResponse.json();
+                    console.log('Payments data received:', paymentsData);
+                    
+                    if (paymentsData.success) {
+                        // Update overdue payments
+                        if (paymentsData.overduePayments) {
+                            document.getElementById('overdue-payments-count').textContent = 
+                                paymentsData.overduePayments.count || 0;
+                            document.getElementById('overdue-payments-amount').textContent = 
+                                `₹${(paymentsData.overduePayments.amount || 0).toLocaleString()}`;
+                        }
+                        
+                        // Update yearly revenue (paid periods * amount)
+                        if (paymentsData.yearlyRevenue) {
+                            document.getElementById('yearly-revenue').textContent = 
+                                `₹${(paymentsData.yearlyRevenue.total || 0).toLocaleString()}`;
+                            
+                            // Calculate percentage increase compared to previous year if available
+                            if (paymentsData.yearlyRevenue.percentChange !== undefined) {
+                                const percentChange = paymentsData.yearlyRevenue.percentChange;
+                                const changeText = percentChange >= 0 
+                                    ? `+${percentChange}% from last year` 
+                                    : `${percentChange}% from last year`;
+                                document.getElementById('revenue-percentage').textContent = changeText;
+                            } else {
+                                document.getElementById('revenue-percentage').textContent = 'Year to date';
+                            }
+                        }
+                    } else {
+                        console.error('Payments data success flag is false');
+                        document.getElementById('overdue-payments-count').textContent = '0';
+                        document.getElementById('overdue-payments-amount').textContent = '₹0';
+                    }
+                } else {
+                    console.error('Failed to fetch payments summary:', paymentsResponse.status);
+                    document.getElementById('overdue-payments-count').textContent = '0';
+                    document.getElementById('overdue-payments-amount').textContent = '₹0';
+                }
+            } catch (error) {
+                console.error('Error loading dashboard summary:', error);
+                // Set fallback values if API fails
+                document.getElementById('upcoming-payments-count').textContent = '0';
+                document.getElementById('upcoming-payments-amount').textContent = '₹0';
+                document.getElementById('overdue-payments-count').textContent = '0';
+                document.getElementById('overdue-payments-amount').textContent = '₹0';
+                document.getElementById('active-clients-count').textContent = '0';
+                document.getElementById('yearly-revenue').textContent = '₹0';
+                document.getElementById('revenue-percentage').textContent = 'Data unavailable';
+            }
+        }
+
+        // Call the function to load dashboard data when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load dashboard summary data
+            loadDashboardSummary();
+            
+            // Check for upcoming due dates and send notifications
+            checkAndSendDueDateNotifications();
+            
+            // Other initialization code (already in ownerDashboard.js)
+        });
+
+        // Function to check for upcoming due dates and send notifications
+        async function checkAndSendDueDateNotifications() {
+            try {
+                const token = localStorage.getItem('token');
+                console.log('Token found:', token ? 'Yes' : 'No');
+                if (!token) {
+                    console.error('No authentication token found');
+                    return;
+                }
+
+                // Get the base URL from the current window location
+                const baseUrl = window.location.origin;
+                console.log('Using base URL:', baseUrl);
+                
+                // Fetch clients data
+                const response = await fetch(`${baseUrl}/api/clients`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('Failed to fetch clients:', errorData);
+                    throw new Error('Failed to fetch clients data');
+                }
+
+                const clients = await response.json();
+                console.log('Number of clients fetched:', clients.length);
+                console.log('Sample client data:', clients[0]);
+
+                // Process clients sequentially to avoid race conditions
+                for (const client of clients) {
+                    if (client.nextDueDate && client.lastPaymentDate) {
+                        const nextDueDate = new Date(client.nextDueDate);
+                        const today = new Date();
+                        
+                        // Calculate days remaining
+                        const daysRemaining = Math.ceil((nextDueDate - today) / (1000 * 60 * 60 * 24));
+                        console.log(`Client ${client.fullname}: Days remaining: ${daysRemaining}`);
+                        
+                        // If due date is within 3 days, send notification
+                        if (daysRemaining <= 3 && daysRemaining >= 0) {
+                            try {
+                                console.log(`Sending reminder to ${client.fullname} (${client.email})`);
+                                console.log('Client request ID:', client.requestId);
+                                console.log('Client data:', {
+                                    id: client.id,
+                                    requestId: client.requestId,
+                                    email: client.email,
+                                    nextDueDate: client.nextDueDate,
+                                    lastPaymentDate: client.lastPaymentDate
+                                });
+                                
+                                // Send payment reminder email
+                                const remindResponse = await fetch(`${baseUrl}/api/requests/${client.requestId}/remind`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Authorization': `Bearer ${token}`,
+                                        'Content-Type': 'application/json'
+                                    }
+                                });
+
+                                if (remindResponse.ok) {
+                                    const successData = await remindResponse.json();
+                                    console.log(`Payment reminder sent to ${client.fullname} (${client.email})`, successData);
+                                } else {
+                                    const errorData = await remindResponse.json();
+                                    console.error(`Failed to send reminder to ${client.fullname}:`, errorData);
+                                }
+                            } catch (emailError) {
+                                console.error('Error sending payment reminder:', emailError);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking due dates:', error);
+            }
+        }
+    </script>
+
+    <script>
+        // ... existing scripts ...
+        
+        // Add this function to handle client table rendering
+        function displayClients(clients) {
+            const tableBody = document.getElementById('clientTable');
+            if (!tableBody) return;
+            
+            // Clear existing rows
+            tableBody.innerHTML = '';
+            
+            if (!clients || clients.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="px-4 py-4 text-center text-gray-500 dark:text-gray-400">
+                            No approved clients found
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // Create rows for each client
+            clients.forEach(client => {
+                const row = document.createElement('tr');
+                
+                // Calculate days till next payment
+                const nextDueDate = new Date(client.nextDueDate);
+                const today = new Date();
+                const timeDiff = nextDueDate - today;
+                const daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                
+                // Format dates
+                const lastPaymentDate = client.lastPaymentDate 
+                    ? new Date(client.lastPaymentDate).toLocaleDateString() 
+                    : 'N/A';
+                const nextDueDateFormatted = nextDueDate.toLocaleDateString();
+                
+                row.innerHTML = `
+                    <td class="px-4 py-4 whitespace-nowrap truncate-cell" data-content="${client.fullname || ''}">${client.fullname || 'N/A'}</td>
+                    <td class="px-4 py-4 email-cell truncate-cell" data-content="${client.email || ''}">${client.email || 'N/A'}</td>
+                    <td class="px-4 py-4 whitespace-nowrap">${client.mobile || 'N/A'}</td>
+                    <td class="px-4 py-4 whitespace-nowrap">${daysLeft >= 0 ? daysLeft : 'Overdue'}</td>
+                    <td class="px-4 py-4 whitespace-nowrap">${client.planType || 'Standard'}</td>
+                    <td class="px-4 py-4 whitespace-nowrap">${lastPaymentDate}</td>
+                    <td class="px-4 py-4 whitespace-nowrap">${nextDueDateFormatted}</td>
+                    <td class="px-4 py-4 text-right space-x-2">
+                        <button class="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-xs" 
+                                onclick="viewClient('${client._id}')">View</button>
+                        <button class="px-3 py-1 bg-green-500 text-white rounded-md hover:bg-green-600 text-xs" 
+                                onclick="recordPayment('${client._id}')">Payment</button>
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+        }
+    </script>
+</body>
+</html>
+
+
+

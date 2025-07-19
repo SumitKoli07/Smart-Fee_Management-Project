@@ -1,0 +1,1291 @@
+server.js--
+// server.js
+const express = require('express');
+const path = require('path');
+const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
+const cors = require('cors');
+const dotenv = require('dotenv');
+
+// Import routes
+const paymentsRoutes = require('./payments');
+
+// Load environment variables
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, '../frontend')));
+
+// Connect to MongoDB
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/smartfee', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+})
+.then(() => console.log('Connected to MongoDB'))
+.catch(err => console.error('Could not connect to MongoDB:', err));
+
+// Authentication middleware
+function verifyToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+        return res.status(401).json({ success: false, message: 'Access denied. No token provided.' });
+    }
+
+    try {
+        const verified = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = verified;
+        next();
+    } catch (error) {
+        res.status(403).json({ success: false, message: 'Invalid token' });
+    }
+}
+
+// Routes
+app.use('/api/payments', paymentsRoutes);
+
+// --- API Endpoint for Dashboard Data (Example) ---
+app.get('/api/dashboard-data', (req, res) => {
+    // In a real app, fetch this data from your database (MongoDB)
+    const dummyData = {
+        kpis: {
+            upcomingCount: 8,
+            upcomingTotal: 15000, // Assuming INR or your currency
+            overdueCount: 3,
+            overdueTotal: 5500,
+            activeClients: 75,
+            revenueThisMonth: 85000,
+        },
+        overduePayments: [
+            { id: 1, clientName: 'Amit Sharma', serviceName: 'Gym Membership', amount: 2000, dueDate: '2025-04-15', daysOverdue: 5 },
+            { id: 2, clientName: 'Priya Singh', serviceName: 'Yoga Class', amount: 1500, dueDate: '2025-04-18', daysOverdue: 2 },
+            { id: 3, clientName: 'Rahul Verma', serviceName: 'Python Course', amount: 2000, dueDate: '2025-04-10', daysOverdue: 10 },
+        ],
+        upcomingPayments: [
+            { id: 4, clientName: 'Sneha Reddy', serviceName: 'Music Class', amount: 1800, dueDate: '2025-04-22' },
+            { id: 5, clientName: 'Vikram Kumar', serviceName: 'Gym Membership', amount: 2000, dueDate: '2025-04-23' },
+            { id: 6, clientName: 'Anjali Mehta', serviceName: 'Yoga Class', amount: 1500, dueDate: '2025-04-25' },
+            { id: 7, clientName: 'Rohan Gupta', serviceName: 'Advanced Java', amount: 3000, dueDate: '2025-04-28' },
+            { id: 8, clientName: 'Aditi Rao', serviceName: 'Music Class', amount: 1800, dueDate: '2025-04-30' },
+        ]
+    };
+    res.json(dummyData);
+});
+
+// Payment statistics endpoint
+app.get('/api/payments/stats', verifyToken, async (req, res) => {
+    try {
+        const Payment = require('./models/Payment');
+        const Client = require('./models/Client');
+        
+        const ownerId = req.user.id;
+        
+        // Get the current date
+        const now = new Date();
+        
+        // Calculate first day of current month
+        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        
+        // Calculate first day of current year
+        const firstDayOfYear = new Date(now.getFullYear(), 0, 1);
+        
+        // Calculate date 7 days from now
+        const sevenDaysFromNow = new Date();
+        sevenDaysFromNow.setDate(now.getDate() + 7);
+        
+        // Get total payments for current month
+        const monthPayments = await Payment.aggregate([
+            { $match: { owner: mongoose.Types.ObjectId(ownerId), date: { $gte: firstDayOfMonth } } },
+            { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } }
+        ]);
+        
+        // Get total payments for current year
+        const yearPayments = await Payment.aggregate([
+            { $match: { owner: mongoose.Types.ObjectId(ownerId), date: { $gte: firstDayOfYear } } },
+            { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } }
+        ]);
+        
+        // Get overdue clients
+        const overdueClients = await Client.find({
+            owner: ownerId,
+            nextDue: { $lt: now },
+            status: { $ne: 'inactive' }
+        }).select('plan');
+        
+        // Calculate total overdue amount
+        let overdueTotal = 0;
+        overdueClients.forEach(client => {
+            if (client.plan && client.plan.amount) {
+                overdueTotal += client.plan.amount;
+            }
+        });
+        
+        // Get upcoming due clients (next 7 days)
+        const upcomingClients = await Client.find({
+            owner: ownerId,
+            nextDue: { $gte: now, $lte: sevenDaysFromNow },
+            status: { $ne: 'inactive' }
+        }).select('plan');
+        
+        // Calculate total upcoming amount
+        let upcomingTotal = 0;
+        upcomingClients.forEach(client => {
+            if (client.plan && client.plan.amount) {
+                upcomingTotal += client.plan.amount;
+            }
+        });
+        
+        // Compile stats
+        const stats = {
+            monthTotal: monthPayments.length > 0 ? Math.round(monthPayments[0].total) : 0,
+            monthCount: monthPayments.length > 0 ? monthPayments[0].count : 0,
+            yearTotal: yearPayments.length > 0 ? Math.round(yearPayments[0].total) : 0,
+            yearCount: yearPayments.length > 0 ? yearPayments[0].count : 0,
+            overdueTotal: Math.round(overdueTotal),
+            overdueCount: overdueClients.length,
+            upcomingTotal: Math.round(upcomingTotal),
+            upcomingCount: upcomingClients.length
+        };
+        
+        res.status(200).json({
+            success: true,
+            stats
+        });
+    } catch (error) {
+        console.error('Error fetching payment stats:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch payment statistics',
+            error: error.message
+        });
+    }
+});
+
+// --- Serve the main HTML file for the root route ---
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend', 'ownerDashboard.html'));
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({
+        success: false,
+        message: 'Something went wrong!',
+        error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+    });
+});
+
+// --- Start the server ---
+app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+});
+
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+// server.js or offeringsRoutes.js
+
+const express = require('express');
+const router = express.Router();
+const Offering = require('../models/Offering'); // Assuming a Mongoose model for Offering
+const jwt = require('jsonwebtoken'); // For authentication
+const { v4: uuidv4 } = require('uuid'); // For generating unique entry codes
+
+// Middleware to verify JWT token
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (token == null) return res.sendStatus(401); // if there isn't any token
+
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
+        if (err) return res.sendStatus(403); // if token is not valid
+        req.user = user; // Contains user info from the token payload (e.g., owner ID)
+        next();
+    });
+}
+
+// Protect these routes with authentication
+router.use(authenticateToken);
+
+// GET all offerings for the authenticated owner
+router.get('/', async (req, res) => {
+    try {
+        // Find offerings belonging to the logged-in owner
+        const offerings = await Offering.find({ owner: req.user.ownerId }); // Assuming owner ID is stored in the token
+        res.json(offerings);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// GET a specific offering by ID for the authenticated owner
+router.get('/:id', async (req, res) => {
+    try {
+        const offering = await Offering.findOne({ _id: req.params.id, owner: req.user.ownerId });
+        if (offering == null) {
+            return res.status(404).json({ message: 'Offering not found' });
+        }
+        res.json(offering);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// POST create a new offering for the authenticated owner
+router.post('/', async (req, res) => {
+    const offering = new Offering({
+        owner: req.user.ownerId, // Assign the offering to the logged-in owner
+        name: req.body.name,
+        description: req.body.description,
+        paymentPlans: req.body.paymentPlans, // Array of { type, amount }
+        entryCode: uuidv4(), // Generate a unique entry code
+        status: req.body.status || 'active', // Default status
+        serviceId: req.body.serviceId // Add service ID 
+        // clientsEnrolled would start at 0
+    });
+
+    try {
+        const newOffering = await offering.save();
+        res.status(201).json(newOffering);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+});
+
+// PUT update an existing offering for the authenticated owner
+router.put('/:id', async (req, res) => {
+    try {
+        const offering = await Offering.findOne({ _id: req.params.id, owner: req.user.ownerId });
+        if (offering == null) {
+            return res.status(404).json({ message: 'Offering not found' });
+        }
+
+        // Update fields that are allowed to be updated
+        offering.name = req.body.name || offering.name;
+        offering.description = req.body.description || offering.description;
+        offering.paymentPlans = req.body.paymentPlans || offering.paymentPlans;
+        offering.status = req.body.status || offering.status;
+        // Update service ID if it's provided
+        if (req.body.serviceId) {
+            offering.serviceId = req.body.serviceId;
+        }
+        // Do NOT update entryCode here, use a separate endpoint for regeneration
+
+        const updatedOffering = await offering.save();
+        res.json(updatedOffering);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+});
+
+// POST regenerate entry code for an offering
+router.post('/:id/regenerate-code', async (req, res) => {
+     try {
+        const offering = await Offering.findOne({ _id: req.params.id, owner: req.user.ownerId });
+        if (offering == null) {
+            return res.status(404).json({ message: 'Offering not found' });
+        }
+
+        offering.entryCode = uuidv4(); // Generate a new unique code
+
+        const updatedOffering = await offering.save();
+        res.json({ message: 'Entry code regenerated successfully', newEntryCode: updatedOffering.entryCode });
+     } catch (err) {
+        res.status(500).json({ message: err.message });
+     }
+});
+
+
+// DELETE an offering for the authenticated owner
+router.delete('/:id', async (req, res) => {
+    try {
+        const offering = await Offering.findOne({ _id: req.params.id, owner: req.user.ownerId });
+        if (offering == null) {
+            return res.status(404).json({ message: 'Offering not found' });
+        }
+
+        // Consider if you need to handle associated clients (e.g., mark them inactive or prompt the owner)
+        // For simplicity here, we'll just delete the offering
+        await offering.deleteOne();
+        res.json({ message: 'Offering deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Check if a service ID is unique (for generating new IDs)
+router.get('/check-id/:serviceId', async (req, res) => {
+    try {
+        const isUnique = await Offering.isServiceIdUnique(req.params.serviceId);
+        res.json({ isUnique });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+module.exports = router;
+
+
+payments.js
+// payments.js - Routes for payments functionality
+const express = require('express');
+const router = express.Router();
+const mongoose = require('mongoose');
+const Client = require('../models/Client'); // Import Client model
+const Payment = require('../models/Payment'); // Import Payment model
+const jwt = require('jsonwebtoken');
+
+// Authentication middleware
+function verifyToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+        return res.status(401).json({ success: false, message: 'Access denied. No token provided.' });
+    }
+
+    try {
+        const verified = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = verified;
+        next();
+    } catch (error) {
+        res.status(403).json({ success: false, message: 'Invalid token' });
+    }
+}
+
+// Get recent payments for dashboard
+router.get('/recent', verifyToken, async (req, res) => {
+    try {
+        const ownerId = req.user.id;
+        
+        // Find recent payments for this owner
+        // Limit to 5 most recent payments
+        const payments = await Payment.find({ owner: ownerId })
+            .sort({ date: -1 })
+            .limit(5)
+            .populate('client', 'fullname')
+            .lean();
+        
+        // Format the payments for the frontend
+        const formattedPayments = payments.map(payment => ({
+            id: payment._id,
+            clientName: payment.client.fullname,
+            date: new Date(payment.date).toLocaleDateString(),
+            amount: payment.amount,
+            status: payment.status,
+            method: payment.method
+        }));
+        
+        res.status(200).json(formattedPayments);
+    } catch (error) {
+        console.error('Error fetching recent payments:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to fetch recent payments', 
+            error: error.message 
+        });
+    }
+});
+
+// Get all payments with pagination
+router.get('/', verifyToken, async (req, res) => {
+    try {
+        const ownerId = req.user.id;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+        
+        // Get total count for pagination
+        const totalCount = await Payment.countDocuments({ owner: ownerId });
+        
+        // Find payments with pagination
+        const payments = await Payment.find({ owner: ownerId })
+            .sort({ date: -1 })
+            .skip(skip)
+            .limit(limit)
+            .populate('client', 'fullname email mobile')
+            .lean();
+        
+        // Format the payments for the frontend
+        const formattedPayments = payments.map(payment => ({
+            id: payment._id,
+            client: {
+                id: payment.client._id,
+                name: payment.client.fullname,
+                email: payment.client.email,
+                mobile: payment.client.mobile
+            },
+            date: new Date(payment.date).toLocaleDateString(),
+            amount: payment.amount,
+            status: payment.status,
+            method: payment.method,
+            notes: payment.notes || '',
+            receiptNumber: payment.receiptNumber || ''
+        }));
+        
+        res.status(200).json({
+            success: true,
+            payments: formattedPayments,
+            pagination: {
+                total: totalCount,
+                pages: Math.ceil(totalCount / limit),
+                page,
+                limit
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching payments:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to fetch payments', 
+            error: error.message 
+        });
+    }
+});
+
+// Record a new payment
+router.post('/', verifyToken, async (req, res) => {
+    try {
+        const ownerId = req.user.id;
+        const { clientId, amount, method, notes } = req.body;
+        
+        // Validate required fields
+        if (!clientId || !amount || !method) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Client ID, amount, and payment method are required' 
+            });
+        }
+        
+        // Verify the client belongs to this owner
+        const client = await Client.findOne({ 
+            _id: clientId, 
+            owner: ownerId 
+        });
+        
+        if (!client) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Client not found or does not belong to you' 
+            });
+        }
+        
+        // Generate a receipt number 
+        const receiptNumber = `RCPT-${Date.now().toString().slice(-8)}`;
+        
+        // Create the payment record
+        const payment = new Payment({
+            client: clientId,
+            owner: ownerId,
+            amount: parseFloat(amount),
+            method,
+            notes: notes || '',
+            date: new Date(),
+            status: 'completed',
+            receiptNumber
+        });
+        
+        // Save the payment
+        await payment.save();
+        
+        // Update the client's payment status and history
+        client.lastPaid = new Date();
+        
+        // Calculate next due date based on client's plan
+        if (client.plan && client.plan.type) {
+            let nextDue = new Date(client.lastPaid);
+            
+            switch(client.plan.type.toLowerCase()) {
+                case 'monthly':
+                    nextDue.setMonth(nextDue.getMonth() + 1);
+                    break;
+                case 'quarterly':
+                    nextDue.setMonth(nextDue.getMonth() + 3);
+                    break;
+                case 'half-yearly':
+                    nextDue.setMonth(nextDue.getMonth() + 6);
+                    break;
+                case 'yearly':
+                    nextDue.setFullYear(nextDue.getFullYear() + 1);
+                    break;
+                default:
+                    nextDue.setMonth(nextDue.getMonth() + 1); // Default to monthly
+            }
+            
+            client.nextDue = nextDue;
+        }
+        
+        // Update the client's payment status
+        client.status = 'active';
+        
+        // Add to client's payment history if not already there
+        if (!client.paymentHistory) {
+            client.paymentHistory = [];
+        }
+        
+        client.paymentHistory.push({
+            date: new Date(),
+            amount: parseFloat(amount),
+            method,
+            receiptNumber
+        });
+        
+        // Save the updated client
+        await client.save();
+        
+        res.status(201).json({
+            success: true,
+            message: 'Payment recorded successfully',
+            payment: {
+                id: payment._id,
+                clientName: client.fullname,
+                date: new Date(payment.date).toLocaleDateString(),
+                amount: payment.amount,
+                status: payment.status,
+                method: payment.method,
+                receiptNumber
+            }
+        });
+    } catch (error) {
+        console.error('Error recording payment:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to record payment', 
+            error: error.message 
+        });
+    }
+});
+
+// Get payment details by ID
+router.get('/:id', verifyToken, async (req, res) => {
+    try {
+        const ownerId = req.user.id;
+        const paymentId = req.params.id;
+        
+        // Find the payment
+        const payment = await Payment.findOne({ 
+            _id: paymentId, 
+            owner: ownerId 
+        })
+        .populate('client', 'fullname email mobile')
+        .lean();
+        
+        if (!payment) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Payment not found or does not belong to you' 
+            });
+        }
+        
+        // Format payment for response
+        const formattedPayment = {
+            id: payment._id,
+            client: {
+                id: payment.client._id,
+                name: payment.client.fullname,
+                email: payment.client.email,
+                mobile: payment.client.mobile
+            },
+            date: new Date(payment.date).toLocaleDateString(),
+            amount: payment.amount,
+            status: payment.status,
+            method: payment.method,
+            notes: payment.notes || '',
+            receiptNumber: payment.receiptNumber || ''
+        };
+        
+        res.status(200).json({
+            success: true,
+            payment: formattedPayment
+        });
+    } catch (error) {
+        console.error('Error fetching payment details:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to fetch payment details', 
+            error: error.message 
+        });
+    }
+});
+
+module.exports = router; 
+
+payment.js --
+
+// Payment.js - Mongoose model for payments
+const mongoose = require('mongoose');
+
+const PaymentSchema = new mongoose.Schema({
+    client: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Client',
+        required: true
+    },
+    owner: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Owner',
+        required: true
+    },
+    amount: {
+        type: Number,
+        required: true
+    },
+    date: {
+        type: Date,
+        default: Date.now
+    },
+    method: {
+        type: String,
+        enum: ['cash', 'bank_transfer', 'upi', 'card', 'cheque', 'other'],
+        required: true
+    },
+    status: {
+        type: String,
+        enum: ['pending', 'completed', 'failed', 'refunded'],
+        default: 'completed'
+    },
+    notes: {
+        type: String
+    },
+    receiptNumber: {
+        type: String
+    },
+    // For tracking payments from specific services
+    serviceId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Service'
+    }
+}, { timestamps: true });
+
+// Add index for faster queries
+PaymentSchema.index({ owner: 1, date: -1 });
+PaymentSchema.index({ client: 1, date: -1 });
+
+const Payment = mongoose.model('Payment', PaymentSchema);
+
+module.exports = Payment; 
+
+
+payments.html---
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payments - Smart Fee Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link rel="stylesheet" href="ownerDashboard.css">
+    <script>
+        // Tailwind dark mode config
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#121826',
+                        darkcard: '#1E293B',
+                        darktext: '#E2E8F0'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="dark-transition bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-slate-900 dark:via-darkbg dark:to-slate-900 min-h-screen">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar will be included with JavaScript -->
+        <div id="sidebar-container"></div>
+
+        <!-- Main Content -->
+        <div class="flex-1 ml-0 md:ml-[var(--sidebar-width)] transition-all duration-300 ease-in-out">
+            <!-- Top Navbar will be included with JavaScript -->
+            <div id="navbar-container"></div>
+
+            <!-- Page Content -->
+            <main class="p-4 md:p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Payments</h1>
+                    <button id="recordPaymentBtn" class="flex items-center gradient-bg text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Record Payment
+                    </button>
+                </div>
+
+                <!-- Payment Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                    <div class="bg-white dark:bg-darkcard rounded-xl shadow-md p-6 border-t-4 border-green-500">
+                        <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Total Payments This Month</h2>
+                        <p class="text-3xl font-bold text-gray-800 dark:text-white mb-1" id="totalMonthPayments">₹0</p>
+                        <p class="text-gray-500 dark:text-gray-400" id="paymentCountMonth">0 payments</p>
+                    </div>
+                    <div class="bg-white dark:bg-darkcard rounded-xl shadow-md p-6 border-t-4 border-blue-500">
+                        <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Overdue Payments</h2>
+                        <p class="text-3xl font-bold text-gray-800 dark:text-white mb-1" id="overdueAmount">₹0</p>
+                        <p class="text-gray-500 dark:text-gray-400" id="overdueCount">0 clients</p>
+                    </div>
+                    <div class="bg-white dark:bg-darkcard rounded-xl shadow-md p-6 border-t-4 border-yellow-500">
+                        <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Upcoming (7 Days)</h2>
+                        <p class="text-3xl font-bold text-gray-800 dark:text-white mb-1" id="upcomingAmount">₹0</p>
+                        <p class="text-gray-500 dark:text-gray-400" id="upcomingCount">0 clients</p>
+                    </div>
+                    <div class="bg-white dark:bg-darkcard rounded-xl shadow-md p-6 border-t-4 border-purple-500">
+                        <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Total Revenue This Year</h2>
+                        <p class="text-3xl font-bold text-gray-800 dark:text-white mb-1" id="totalYearPayments">₹0</p>
+                        <p class="text-gray-500 dark:text-gray-400" id="paymentCountYear">0 payments</p>
+                    </div>
+                </div>
+
+                <!-- Payments Table Section -->
+                <div class="bg-white dark:bg-darkcard rounded-xl shadow-md mb-6">
+                    <div class="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+                        <h2 class="text-xl font-semibold text-gray-800 dark:text-white">Payment History</h2>
+                        <div class="flex space-x-2">
+                            <div class="relative">
+                                <input type="text" id="paymentSearch" placeholder="Search payments..." class="px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded-lg">
+                                <button class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <select id="paymentFilter" class="px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded-lg">
+                                <option value="all">All Payments</option>
+                                <option value="cash">Cash</option>
+                                <option value="upi">UPI</option>
+                                <option value="bank_transfer">Bank Transfer</option>
+                                <option value="card">Card</option>
+                                <option value="cheque">Cheque</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <!-- Payments Table -->
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead>
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Client</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Method</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Receipt</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200 dark:divide-gray-700" id="paymentsTable">
+                                    <!-- Payments will be loaded here dynamically -->
+                                    <tr>
+                                        <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                                            Loading payments...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="flex justify-between items-center mt-4">
+                            <div class="text-sm text-gray-600 dark:text-gray-400">Showing <span id="paymentCount">0</span> payments</div>
+                            <div class="flex space-x-1" id="paymentPagination">
+                                <!-- Pagination will be dynamically generated -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Record Payment Modal -->
+    <div id="recordPaymentModal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50 dark:bg-opacity-70"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md">
+            <div class="bg-white dark:bg-darkcard rounded-xl shadow-xl p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Record New Payment</h3>
+                    <button id="closeRecordPaymentModal" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <form id="recordPaymentForm">
+                    <div class="grid gap-4">
+                        <div>
+                            <label for="clientSelect" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Client</label>
+                            <select id="clientSelect" name="clientId" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white" required>
+                                <option value="" disabled selected>Select Client</option>
+                                <!-- Clients will be loaded here dynamically -->
+                            </select>
+                        </div>
+                        <div>
+                            <label for="paymentAmount" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount (₹)</label>
+                            <input type="number" id="paymentAmount" name="amount" min="0" step="0.01" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white" required>
+                        </div>
+                        <div>
+                            <label for="paymentMethod" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Method</label>
+                            <select id="paymentMethod" name="method" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white" required>
+                                <option value="" disabled selected>Select Method</option>
+                                <option value="cash">Cash</option>
+                                <option value="upi">UPI</option>
+                                <option value="bank_transfer">Bank Transfer</option>
+                                <option value="card">Card</option>
+                                <option value="cheque">Cheque</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="paymentNotes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes (Optional)</label>
+                            <textarea id="paymentNotes" name="notes" rows="2" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white"></textarea>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex space-x-3">
+                        <button type="button" id="cancelRecordPayment" class="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition">Cancel</button>
+                        <button type="submit" class="flex-1 px-4 py-2 gradient-bg text-white rounded-lg font-medium hover:opacity-90 transition">Record Payment</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toastNotification" class="fixed bottom-4 right-4 z-50 bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 flex items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span id="toastMessage">Operation completed successfully!</span>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.10.7/dayjs.min.js"></script>
+    <script src="common.js"></script>
+    <script src="payments.js"></script>
+</body>
+</html>
+
+payments.js--
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Load common components
+    loadSidebar();
+    loadNavbar();
+    
+    // Get UI elements
+    const recordPaymentBtn = document.getElementById('recordPaymentBtn');
+    const closeRecordPaymentModal = document.getElementById('closeRecordPaymentModal');
+    const recordPaymentModal = document.getElementById('recordPaymentModal');
+    const cancelRecordPayment = document.getElementById('cancelRecordPayment');
+    const recordPaymentForm = document.getElementById('recordPaymentForm');
+    const clientSelect = document.getElementById('clientSelect');
+    const paymentFilter = document.getElementById('paymentFilter');
+    const paymentSearch = document.getElementById('paymentSearch');
+    
+    // Set up event listeners
+    recordPaymentBtn.addEventListener('click', openRecordPaymentModal);
+    closeRecordPaymentModal.addEventListener('click', closeModal);
+    cancelRecordPayment.addEventListener('click', closeModal);
+    
+    // Close modal when clicking outside
+    recordPaymentModal.addEventListener('click', function(e) {
+        if (e.target === recordPaymentModal) {
+            closeModal();
+        }
+    });
+    
+    // Handle form submission for recording payment
+    recordPaymentForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const clientId = clientSelect.value;
+        const amount = document.getElementById('paymentAmount').value;
+        const method = document.getElementById('paymentMethod').value;
+        const notes = document.getElementById('paymentNotes').value;
+        
+        if (!clientId || !amount || !method) {
+            showToast('Please fill in all required fields', false);
+            return;
+        }
+        
+        try {
+            const token = localStorage.getItem('ownerToken');
+            const response = await fetch('http://localhost:3000/api/payments', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    clientId,
+                    amount,
+                    method,
+                    notes
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast(data.message || 'Payment recorded successfully');
+                closeModal();
+                
+                // Refresh the payments list
+                fetchPayments();
+                
+                // Refresh the payment stats
+                fetchPaymentStats();
+            } else {
+                showToast(data.message || 'Failed to record payment', false);
+            }
+        } catch (error) {
+            console.error('Error recording payment:', error);
+            showToast('Error recording payment', false);
+        }
+    });
+    
+    // Filter and search functionality
+    paymentFilter.addEventListener('change', fetchPayments);
+    paymentSearch.addEventListener('input', debounce(fetchPayments, 500));
+    
+    // Load initial data
+    loadClients();
+    fetchPayments();
+    fetchPaymentStats();
+    
+    // Function to open modal
+    function openRecordPaymentModal() {
+        recordPaymentModal.classList.remove('hidden');
+        document.getElementById('paymentAmount').value = '';
+        document.getElementById('paymentMethod').selectedIndex = 0;
+        document.getElementById('paymentNotes').value = '';
+    }
+    
+    // Function to close modal
+    function closeModal() {
+        recordPaymentModal.classList.add('hidden');
+    }
+    
+    // Function to load clients for dropdown
+    async function loadClients() {
+        try {
+            const token = localStorage.getItem('ownerToken');
+            const response = await fetch('http://localhost:3000/api/clients', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.clients && data.clients.length > 0) {
+                clientSelect.innerHTML = '<option value="" disabled selected>Select Client</option>';
+                
+                data.clients.forEach(client => {
+                    const option = document.createElement('option');
+                    option.value = client._id;
+                    option.textContent = `${client.fullname} (${client.mobile})`;
+                    clientSelect.appendChild(option);
+                });
+            } else {
+                clientSelect.innerHTML = '<option value="" disabled selected>No clients found</option>';
+            }
+        } catch (error) {
+            console.error('Error loading clients:', error);
+            clientSelect.innerHTML = '<option value="" disabled selected>Error loading clients</option>';
+        }
+    }
+    
+    // Function to fetch and display payments
+    async function fetchPayments(page = 1) {
+        try {
+            const token = localStorage.getItem('ownerToken');
+            const filter = paymentFilter.value;
+            const search = paymentSearch.value;
+            const limit = 10; // Number of payments per page
+            
+            let url = `http://localhost:3000/api/payments?page=${page}&limit=${limit}`;
+            
+            if (filter && filter !== 'all') {
+                url += `&method=${filter}`;
+            }
+            
+            if (search) {
+                url += `&search=${encodeURIComponent(search)}`;
+            }
+            
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            const data = await response.json();
+            const paymentsTable = document.getElementById('paymentsTable');
+            const paymentCount = document.getElementById('paymentCount');
+            const paymentPagination = document.getElementById('paymentPagination');
+            
+            if (data.success && data.payments) {
+                const payments = data.payments;
+                const pagination = data.pagination;
+                
+                // Update payment count
+                paymentCount.textContent = pagination.total || 0;
+                
+                // Clear existing rows
+                paymentsTable.innerHTML = '';
+                
+                if (payments.length === 0) {
+                    paymentsTable.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                                No payments found
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    // Add payment rows
+                    payments.forEach(payment => {
+                        const row = document.createElement('tr');
+                        
+                        // Format payment method to look nicer
+                        let methodText = payment.method.replace('_', ' ');
+                        methodText = methodText.charAt(0).toUpperCase() + methodText.slice(1);
+                        
+                        row.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="ml-3">
+                                        <div class="text-sm font-medium text-gray-900 dark:text-white">${payment.client.name}</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">${payment.client.mobile || payment.client.email}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${payment.date}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">₹${payment.amount}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${methodText}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">${payment.status}</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-indigo-600 dark:text-indigo-400">
+                                ${payment.receiptNumber ? 
+                                    `<a href="#" onclick="viewReceipt('${payment.id}')" class="hover:underline">${payment.receiptNumber}</a>` : 
+                                    'N/A'}
+                            </td>
+                        `;
+                        
+                        paymentsTable.appendChild(row);
+                    });
+                    
+                    // Generate pagination
+                    if (pagination.pages > 1) {
+                        let paginationHtml = '';
+                        
+                        // Previous button
+                        paginationHtml += `
+                            <button 
+                                ${page === 1 ? 'disabled' : ''}
+                                onclick="${page > 1 ? `fetchPayments(${page - 1})` : ''}"
+                                class="px-3 py-1 ${page === 1 ? 'bg-gray-200 dark:bg-gray-700 cursor-not-allowed' : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'} text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-md mr-1"
+                            >
+                                Prev
+                            </button>
+                        `;
+                        
+                        // Page buttons (with limit to avoid too many buttons)
+                        const maxButtons = 5;
+                        let startPage = Math.max(1, page - Math.floor(maxButtons / 2));
+                        let endPage = Math.min(pagination.pages, startPage + maxButtons - 1);
+                        
+                        if (endPage - startPage + 1 < maxButtons) {
+                            startPage = Math.max(1, endPage - maxButtons + 1);
+                        }
+                        
+                        for (let i = startPage; i <= endPage; i++) {
+                            paginationHtml += `
+                                <button 
+                                    onclick="fetchPayments(${i})"
+                                    class="px-3 py-1 ${i === page ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'} border border-gray-300 dark:border-gray-600 rounded-md mx-1"
+                                >
+                                    ${i}
+                                </button>
+                            `;
+                        }
+                        
+                        // Next button
+                        paginationHtml += `
+                            <button 
+                                ${page === pagination.pages ? 'disabled' : ''}
+                                onclick="${page < pagination.pages ? `fetchPayments(${page + 1})` : ''}"
+                                class="px-3 py-1 ${page === pagination.pages ? 'bg-gray-200 dark:bg-gray-700 cursor-not-allowed' : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'} text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-md ml-1"
+                            >
+                                Next
+                            </button>
+                        `;
+                        
+                        paymentPagination.innerHTML = paginationHtml;
+                    } else {
+                        paymentPagination.innerHTML = '';
+                    }
+                }
+            } else {
+                paymentsTable.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                            Failed to load payments
+                        </td>
+                    </tr>
+                `;
+                paymentCount.textContent = '0';
+                paymentPagination.innerHTML = '';
+            }
+        } catch (error) {
+            console.error('Error fetching payments:', error);
+            document.getElementById('paymentsTable').innerHTML = `
+                <tr>
+                    <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                        Error loading payments
+                    </td>
+                </tr>
+            `;
+            document.getElementById('paymentCount').textContent = '0';
+            document.getElementById('paymentPagination').innerHTML = '';
+        }
+    }
+    
+    // Function to fetch payment statistics
+    async function fetchPaymentStats() {
+        try {
+            const token = localStorage.getItem('ownerToken');
+            const response = await fetch('http://localhost:3000/api/payments/stats', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Update the stats in the UI
+                document.getElementById('totalMonthPayments').textContent = `₹${data.stats.monthTotal || 0}`;
+                document.getElementById('paymentCountMonth').textContent = `${data.stats.monthCount || 0} payments`;
+                
+                document.getElementById('overdueAmount').textContent = `₹${data.stats.overdueTotal || 0}`;
+                document.getElementById('overdueCount').textContent = `${data.stats.overdueCount || 0} clients`;
+                
+                document.getElementById('upcomingAmount').textContent = `₹${data.stats.upcomingTotal || 0}`;
+                document.getElementById('upcomingCount').textContent = `${data.stats.upcomingCount || 0} clients`;
+                
+                document.getElementById('totalYearPayments').textContent = `₹${data.stats.yearTotal || 0}`;
+                document.getElementById('paymentCountYear').textContent = `${data.stats.yearCount || 0} payments`;
+            }
+        } catch (error) {
+            console.error('Error fetching payment stats:', error);
+        }
+    }
+    
+    // Make fetchPayments available globally for pagination
+    window.fetchPayments = fetchPayments;
+    
+    // Function to view receipt
+    window.viewReceipt = function(paymentId) {
+        // Implement receipt viewing functionality
+        alert('Receipt viewing will be implemented in the next phase');
+    };
+    
+    // Debounce function for search input
+    function debounce(func, delay) {
+        let timeout;
+        return function() {
+            const context = this;
+            const args = arguments;
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(context, args), delay);
+        };
+    }
+    
+    // Function to load sidebar
+    function loadSidebar() {
+        fetch('components/sidebar.html')
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('sidebar-container').innerHTML = html;
+                
+                // Highlight the active menu item
+                setTimeout(() => {
+                    const paymentsLink = document.querySelector('a[href="payments.html"]');
+                    if (paymentsLink) {
+                        paymentsLink.classList.remove('text-gray-700', 'dark:text-gray-300', 'hover:bg-gray-100', 'dark:hover:bg-gray-800');
+                        paymentsLink.classList.add('text-gray-800', 'dark:text-gray-200', 'bg-indigo-100', 'dark:bg-indigo-900/30', 'font-medium');
+                    }
+                }, 100);
+            })
+            .catch(error => console.error('Error loading sidebar:', error));
+    }
+    
+    // Function to load navbar
+    function loadNavbar() {
+        fetch('components/navbar.html')
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('navbar-container').innerHTML = html;
+                
+                // Set up dark mode toggle if needed
+                setTimeout(() => {
+                    const themeToggle = document.getElementById('themeToggle');
+                    if (themeToggle) {
+                        themeToggle.addEventListener('click', toggleDarkMode);
+                    }
+                }, 100);
+            })
+            .catch(error => console.error('Error loading navbar:', error));
+    }
+    
+    // Toast notification
+    function showToast(message, success = true) {
+        const toast = document.getElementById('toastNotification');
+        const toastMessage = document.getElementById('toastMessage');
+        
+        // Set message and color
+        toastMessage.textContent = message;
+        toast.className = toast.className.replace(/bg-\w+-\d+/g, '');
+        toast.classList.add(success ? 'bg-green-500' : 'bg-red-500');
+        
+        // Show and animate
+        toast.classList.remove('translate-y-20', 'opacity-0');
+        
+        // Hide after 3 seconds
+        setTimeout(() => {
+            toast.classList.add('translate-y-20', 'opacity-0');
+        }, 3000);
+    }
+    
+    // Dark mode toggle
+    function toggleDarkMode() {
+        const html = document.documentElement;
+        if (html.classList.contains('dark')) {
+            html.classList.remove('dark');
+            localStorage.setItem('darkMode', 'light');
+        } else {
+            html.classList.add('dark');
+            localStorage.setItem('darkMode', 'dark');
+        }
+    }
+    
+    // Apply saved dark mode preference
+    const savedTheme = localStorage.getItem('darkMode');
+    if (savedTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+    }
+}); 
+
+
+

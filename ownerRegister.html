@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Owner Registration - Smart Fee Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <link rel="stylesheet" href="ownerRegister.css">
+  <script>
+    // Tailwind dark mode config
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            darkbg: '#121826',
+            darkcard: '#1E293B',
+            darktext: '#E2E8F0'
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="dark-transition bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-slate-900 dark:via-darkbg dark:to-slate-900 min-h-screen">
+  <!-- Navigation -->
+  <nav class="glass-effect fixed w-full z-50 px-6 py-4">
+    <div class="max-w-6xl mx-auto flex justify-between items-center">
+      <div class="flex items-center">
+        <div class="w-10 h-10 rounded-lg gradient-bg flex items-center justify-center text-white font-bold text-xl mr-3">S</div>
+        <span class="text-xl font-bold text-indigo-800 dark:text-indigo-300">SmartFee</span>
+      </div>
+      <div class="hidden md:flex space-x-8">
+        <a href="landingPage.html" class="text-gray-700 dark:text-gray-300 hover:text-indigo-700 dark:hover:text-indigo-400 transition">Home</a>
+        <a href="landingPage.html#features" class="text-gray-700 dark:text-gray-300 hover:text-indigo-700 dark:hover:text-indigo-400 transition">Features</a>
+        <a href="landingPage.html" class="text-gray-700 dark:text-gray-300 hover:text-indigo-700 dark:hover:text-indigo-400 transition">Why Choose Us</a>
+        <a href="landingPage.html" class="text-gray-700 dark:text-gray-300 hover:text-indigo-700 dark:hover:text-indigo-400 transition">Contact</a>
+      </div>
+      <div class="flex items-center space-x-4">
+        <!-- Theme Toggle -->
+        <div class="theme-toggle" id="themeToggle" role="button" aria-label="Toggle dark mode"></div>
+        <a href="chooselogin.html" class="hidden md:inline-flex px-4 py-2 rounded-lg border border-indigo-600 dark:border-indigo-400 text-indigo-600 dark:text-indigo-300 font-medium hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition">Login</a>
+        <a href="chooseRegister.html" class="gradient-bg px-4 py-2 rounded-lg text-white font-medium">Register</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="pt-24 pb-10 px-4">
+    <div class="max-w-4xl mx-auto bg-white dark:bg-darkcard shadow-xl rounded-2xl p-8">
+      <h1 class="text-3xl font-bold text-center text-indigo-700 dark:text-indigo-400 mb-6">Owner Registration</h1>
+
+      <form id="ownerRegistrationForm" class="grid gap-4 sm:grid-cols-2" enctype="multipart/form-data">
+        <input type="text" name="businessName" placeholder="Business Name" class="input" required>
+        <input type="text" name="ownerName" placeholder="Owner Full Name" class="input" required>
+        <input type="text" name="businessPhone" placeholder="Business Phone" class="input" required pattern="[0-9]{10}" title="Please enter a valid 10-digit phone number">
+        
+        <!-- Email verification in two columns -->
+        <div class="flex items-center space-x-2">
+          <div class="flex-grow">
+            <input type="email" name="businessEmail" id="businessEmail" placeholder="Business Email" class="input w-full" required>
+          </div>
+          <button type="button" id="sendOtpBtn" class="px-3 py-2 gradient-bg text-white text-sm rounded-lg hover:opacity-90">Send OTP</button>
+        </div>
+        
+        <div class="flex items-center space-x-2">
+          <div class="flex-grow">
+            <input type="text" name="otp" id="otpInput" placeholder="Enter OTP" class="input w-full" required>
+          </div>
+          <button type="button" id="verifyOtpBtn" class="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:opacity-90">Verify OTP</button>
+        </div>
+        
+        <div class="col-span-2">
+          <p id="otpStatus" class="text-xs mt-1 mb-2"></p>
+        </div>
+        
+        <input type="text" name="businessAddress" placeholder="Business Address" class="input col-span-2" required>
+        <input type="text" name="registrationNo" placeholder="Business Registration Number" class="input" required>
+        <input type="text" name="taxID" placeholder="Tax ID / GST Number" class="input" required>
+        <input type="text" name="serviceName" placeholder="Service Name" class="input" required>
+        <textarea name="serviceDescription" placeholder="Service Description" rows="2" class="input col-span-2"></textarea>
+        <input type="number" name="capacity" placeholder="Max Service Capacity" class="input" required min="1">
+        
+        <div class="payment-settings-container col-span-1">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Payment Settings Available</label>
+          <div class="flex flex-col space-y-2">
+            <label class="inline-flex items-center">
+              <input type="checkbox" name="paymentSetting" value="monthly" class="form-checkbox h-5 w-5 text-indigo-600 dark:text-indigo-400">
+              <span class="ml-2 text-gray-700 dark:text-gray-300">Monthly</span>
+            </label>
+            <label class="inline-flex items-center">
+              <input type="checkbox" name="paymentSetting" value="quarterly" class="form-checkbox h-5 w-5 text-indigo-600 dark:text-indigo-400">
+              <span class="ml-2 text-gray-700 dark:text-gray-300">Quarterly</span>
+            </label>
+            <label class="inline-flex items-center">
+              <input type="checkbox" name="paymentSetting" value="half-yearly" class="form-checkbox h-5 w-5 text-indigo-600 dark:text-indigo-400">
+              <span class="ml-2 text-gray-700 dark:text-gray-300">Half-Yearly</span>
+            </label>
+            <label class="inline-flex items-center">
+              <input type="checkbox" name="paymentSetting" value="yearly" class="form-checkbox h-5 w-5 text-indigo-600 dark:text-indigo-400">
+              <span class="ml-2 text-gray-700 dark:text-gray-300">Yearly</span>
+            </label>
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Select at least one payment option</p>
+        </div>
+
+        <!-- Password fields (moved to the right of payment settings) -->
+        <div class="col-span-1">
+          <div class="w-full">
+            <input type="password" name="password" id="password" placeholder="Password" class="input" required pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$" title="Password must be at least 8 characters long and include uppercase, lowercase, number and special character">
+          </div>
+          <div class="w-full mt-4">
+            <input type="password" name="confirmPassword" id="confirmPassword" placeholder="Confirm Password" class="input" required>
+          </div>
+        </div>
+
+        <!-- Fees Section -->
+        
+
+        <!-- Single input for service fees -->
+        <input type="number" name="serviceFee" placeholder="Service Fee (₹)" class="input col-span-2" min="0" required>
+
+        <div class="col-span-2 text-xs text-gray-500 dark:text-gray-400 mt-1 mb-4">
+          Enter the service fee for the selected payment option.
+        </div>
+
+        <div class="col-span-2">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Business Registration Certificate (PDF or Image)</label>
+          <input type="file" name="businessDoc" class="input w-full" required accept=".pdf,.jpg,.jpeg,.png">
+        </div>
+        <div class="col-span-2">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tax Registration Document (PDF or Image)</label>
+          <input type="file" name="taxDoc" class="input w-full" required accept=".pdf,.jpg,.jpeg,.png">
+        </div>
+
+        <div class="col-span-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
+          <p class="mb-2">Password requirements:</p>
+          <ul class="list-disc pl-5">
+            <li>At least 8 characters long</li>
+            <li>Must contain at least one uppercase letter</li>
+            <li>Must contain at least one lowercase letter</li>
+            <li>Must contain at least one number</li>
+            <li>Must contain at least one special character (@$!%*?&)</li>
+          </ul>
+        </div>
+
+        <!-- Hidden field for businessType (since we removed the dropdown) -->
+        <input type="hidden" name="businessType" value="other">
+
+        <button type="button" id="registerBtn" class="col-span-2 gradient-bg text-white py-3 rounded-lg hover:opacity-90 font-semibold transition">Register as Owner</button>
+      </form>
+    </div>
+  </div>
+
+  <footer class="text-center text-gray-500 dark:text-gray-400 text-sm p-4">
+    &copy; 2025 Smart Fee Management. All rights reserved.
+  </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Define the API URL as a constant for easy updating
+      const API_BASE_URL = 'http://localhost:3000';
+      const REGISTER_ENDPOINT = `${API_BASE_URL}/api/register-owner`;
+      
+      // Get the form reference
+      const form = document.getElementById('ownerRegistrationForm');
+      
+      // Ensure the default HTML form submission is prevented
+      form.setAttribute('onsubmit', 'return false;');
+      
+      // Initialize fee toggle functionality
+      setupPaymentFeeToggle();
+      
+      // Theme toggle functionality
+      const htmlElement = document.documentElement;
+      const themeToggle = document.getElementById('themeToggle');
+      
+      // Check for saved theme preference or respect OS setting
+      const savedTheme = localStorage.getItem('theme');
+      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      
+      // Apply the right theme
+      if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+        htmlElement.classList.add('dark');
+      } else {
+        htmlElement.classList.remove('dark');
+      }
+      
+      // Toggle theme when button is clicked
+      themeToggle.addEventListener('click', () => {
+        if (htmlElement.classList.contains('dark')) {
+          htmlElement.classList.remove('dark');
+          localStorage.setItem('theme', 'light');
+        } else {
+          htmlElement.classList.add('dark');
+          localStorage.setItem('theme', 'dark');
+        }
+      });
+      
+      // Function to display messages to the user
+      window.showMessage = function(message, type) {
+        // Check if a message container already exists
+        let messageContainer = document.getElementById('message-container');
+        
+        // If not, create one
+        if (!messageContainer) {
+          messageContainer = document.createElement('div');
+          messageContainer.id = 'message-container';
+          messageContainer.className = 'fixed top-5 right-5 z-50 max-w-md';
+          document.body.appendChild(messageContainer);
+        }
+        
+        // Create the message element
+        const messageElement = document.createElement('div');
+        messageElement.className = `p-4 mb-3 rounded-lg shadow-lg message-animate-in ${
+          type === 'success' 
+            ? 'bg-green-500 text-white' 
+            : 'bg-red-500 text-white'
+        }`;
+        messageElement.textContent = message;
+        
+        // Add to container
+        messageContainer.appendChild(messageElement);
+        
+        // Remove after delay
+        setTimeout(() => {
+          messageElement.classList.remove('message-animate-in');
+          messageElement.classList.add('message-animate-out');
+          setTimeout(() => {
+            messageContainer.removeChild(messageElement);
+          }, 300);
+        }, 5000);
+      };
+      
+      // Email OTP verification
+      let otpVerified = false;
+      const sendOtpBtn = document.getElementById('sendOtpBtn');
+      const verifyOtpBtn = document.getElementById('verifyOtpBtn');
+      const otpStatus = document.getElementById('otpStatus');
+      const otpInput = document.getElementById('otpInput');
+      const emailInput = document.getElementById('businessEmail');
+      
+      sendOtpBtn.addEventListener('click', async function() {
+        const email = emailInput.value;
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          showMessage('Please enter a valid email address', 'error');
+          return;
+        }
+        
+        sendOtpBtn.disabled = true;
+        sendOtpBtn.textContent = 'Sending...';
+        
+        try {
+          // Check if server is accessible
+          try {
+            const pingResponse = await fetch(`${API_BASE_URL}/api/ping`);
+            if (!pingResponse.ok) {
+              throw new Error(`Server ping failed with status: ${pingResponse.status}`);
+            }
+          } catch (pingError) {
+            console.error('Server ping error:', pingError);
+            throw new Error(`Cannot connect to server. Please make sure the server is running at ${API_BASE_URL}`);
+          }
+          
+          const response = await fetch(`${API_BASE_URL}/api/send-email-otp`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email })
+          });
+          
+          // Check if response is JSON
+          const contentType = response.headers.get("content-type");
+          let data;
+          
+          if (!contentType || !contentType.includes('application/json')) {
+            const textResponse = await response.text();
+            console.error('Non-JSON response:', textResponse);
+            throw new Error('Server returned non-JSON response. Check console for details.');
+          } else {
+            data = await response.json();
+          }
+          
+          if (response.ok) {
+            otpStatus.textContent = 'OTP sent to your email';
+            otpStatus.className = 'text-sm mt-1 text-green-600 dark:text-green-400';
+            showMessage('OTP sent to your email successfully', 'success');
+          } else {
+            otpStatus.textContent = data.message || 'Failed to send OTP';
+            otpStatus.className = 'text-sm mt-1 text-red-600 dark:text-red-400';
+            showMessage(data.message || 'Failed to send OTP', 'error');
+          }
+        } catch (error) {
+          console.error('Error sending OTP:', error);
+          otpStatus.textContent = error.message || 'Failed to send OTP';
+          otpStatus.className = 'text-sm mt-1 text-red-600 dark:text-red-400';
+          showMessage(error.message || 'Failed to send OTP', 'error');
+        } finally {
+          sendOtpBtn.disabled = false;
+          sendOtpBtn.textContent = 'Send OTP';
+        }
+      });
+      
+      verifyOtpBtn.addEventListener('click', async function() {
+        const email = emailInput.value;
+        const otp = otpInput.value;
+        
+        if (!otp) {
+          showMessage('Please enter OTP', 'error');
+          return;
+        }
+        
+        verifyOtpBtn.disabled = true;
+        verifyOtpBtn.textContent = 'Verifying...';
+        
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/verify-email-otp`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, otp })
+          });
+          
+          // Check if response is JSON
+          const contentType = response.headers.get("content-type");
+          let data;
+          
+          if (!contentType || !contentType.includes('application/json')) {
+            const textResponse = await response.text();
+            console.error('Non-JSON response:', textResponse);
+            throw new Error('Server returned non-JSON response. Check console for details.');
+          } else {
+            data = await response.json();
+          }
+          
+          if (response.ok) {
+            otpVerified = true;
+            otpStatus.textContent = 'Email verified successfully';
+            otpStatus.className = 'text-sm mt-1 text-green-600 dark:text-green-400';
+            showMessage('Email verified successfully', 'success');
+            
+            // Disable inputs after verification
+            otpInput.disabled = true;
+            emailInput.disabled = true;
+            verifyOtpBtn.disabled = true;
+            sendOtpBtn.disabled = true;
+            
+            // Explicitly store the verified email to ensure it's used in form submission
+            const hiddenEmailField = document.createElement('input');
+            hiddenEmailField.type = 'hidden';
+            hiddenEmailField.name = 'businessEmail';
+            hiddenEmailField.value = email;
+            
+            // Remove any existing hidden email field to avoid duplicates
+            const existingHiddenField = form.querySelector('input[name="businessEmail"][type="hidden"]');
+            if (existingHiddenField) {
+              form.removeChild(existingHiddenField);
+            }
+            
+            // Add hidden field to form
+            form.appendChild(hiddenEmailField);
+            console.log('Added hidden email field with value:', email);
+          } else {
+            otpStatus.textContent = data.message || 'Invalid OTP';
+            otpStatus.className = 'text-sm mt-1 text-red-600 dark:text-red-400';
+            showMessage(data.message || 'Invalid OTP', 'error');
+          }
+        } catch (error) {
+          console.error('Error verifying OTP:', error);
+          otpStatus.textContent = error.message || 'Failed to verify OTP';
+          otpStatus.className = 'text-sm mt-1 text-red-600 dark:text-red-400';
+          showMessage(error.message || 'Failed to verify OTP', 'error');
+        } finally {
+          if (!otpVerified) {
+            verifyOtpBtn.disabled = false;
+            verifyOtpBtn.textContent = 'Verify OTP';
+          }
+        }
+      });
+
+      // Form validation to check if email is verified before submission
+      form.addEventListener('submit', function(e) {
+        if (!otpVerified) {
+          e.preventDefault();
+          showMessage('Please verify your email with OTP before submitting', 'error');
+        }
+      }, { capture: true });
+
+      // Main form submission event - must run after the OTP verification check
+      form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        
+        if (password !== confirmPassword) {
+          showMessage('Passwords do not match!', 'error');
+          return;
+        }
+        
+        // Check if at least one payment setting is selected
+        const paymentSettings = document.querySelectorAll('input[name="paymentSetting"]:checked');
+        if (paymentSettings.length === 0) {
+          showMessage('Please select at least one payment setting!', 'error');
+          return;
+        }
+        
+        // Check if service fee is entered
+        const serviceFee = document.querySelector('input[name="serviceFee"]').value;
+        if (!serviceFee || isNaN(serviceFee) || serviceFee <= 0) {
+          showMessage('Please enter a valid service fee!', 'error');
+          return;
+        }
+        
+        try {
+          // Show loading state
+          const submitBtn = document.getElementById('registerBtn');
+          const originalBtnText = submitBtn.textContent;
+          submitBtn.textContent = 'Registering...';
+          submitBtn.disabled = true;
+          
+          // Log the service fee value for debugging
+          console.log("Service Fee:", serviceFee);
+          
+          // Create FormData from the form
+          const formData = new FormData(form);
+          
+          // Ensure businessEmail is included in the form data
+          // First check for the hidden field (which has the verified email)
+          const hiddenEmailField = form.querySelector('input[name="businessEmail"][type="hidden"]');
+          let verifiedEmail;
+          
+          if (hiddenEmailField) {
+            verifiedEmail = hiddenEmailField.value;
+          } else {
+            // Fallback to the visible email field
+            verifiedEmail = document.getElementById('businessEmail').value;
+          }
+          
+          formData.set('businessEmail', verifiedEmail);
+          console.log("Setting verified email in form data:", verifiedEmail);
+          
+          // Special log to verify the email is properly in the formData
+          setTimeout(() => {
+            console.log("Checking businessEmail in formData:", formData.get('businessEmail'));
+          }, 0);
+          
+          // Debug file uploads
+          console.log("Checking file uploads:");
+          const businessDoc = document.querySelector('input[name="businessDoc"]');
+          const taxDoc = document.querySelector('input[name="taxDoc"]');
+          
+          if (businessDoc && businessDoc.files.length > 0) {
+            const file = businessDoc.files[0];
+            console.log("Business doc file:", file.name, file.type, file.size + " bytes");
+            
+            // Verify the file is in the FormData
+            const formDataFile = formData.get('businessDoc');
+            if (formDataFile) {
+              console.log("Business doc in FormData:", formDataFile.name);
+            } else {
+              console.error("Business doc not found in FormData!");
+              formData.append('businessDoc', file);
+              console.log("Manually added business doc to FormData");
+            }
+          } else {
+            console.error("No business doc file selected!");
+          }
+          
+          if (taxDoc && taxDoc.files.length > 0) {
+            const file = taxDoc.files[0];
+            console.log("Tax doc file:", file.name, file.type, file.size + " bytes");
+            
+            // Verify the file is in the FormData
+            const formDataFile = formData.get('taxDoc');
+            if (formDataFile) {
+              console.log("Tax doc in FormData:", formDataFile.name);
+            } else {
+              console.error("Tax doc not found in FormData!");
+              formData.append('taxDoc', file);
+              console.log("Manually added tax doc to FormData");
+            }
+          } else {
+            console.error("No tax doc file selected!");
+          }
+          
+          // Format payment settings properly
+          const paymentSettingsArray = [];
+          document.querySelectorAll('input[name="paymentSetting"]:checked').forEach(checkbox => {
+            paymentSettingsArray.push({
+              name: checkbox.value,
+              amount: 0
+            });
+          });
+          
+          // Create a comma-separated string of payment setting names for backward compatibility
+          const paymentSettingStr = Array.from(paymentSettings).map(checkbox => checkbox.value).join(',');
+          console.log("Payment Setting String:", paymentSettingStr);
+          
+          // Remove the original payment settings (individual checkboxes)
+          formData.delete('paymentSetting');
+          
+          // Add the formatted payment settings as JSON
+          formData.append('paymentSettings', JSON.stringify(paymentSettingsArray));
+          
+          // Add the comma-separated string for backward compatibility
+          formData.append('paymentSetting', paymentSettingStr);
+          
+          // Ensure serviceFee is included and properly formatted as a number
+          formData.set('serviceFee', parseInt(serviceFee));
+          
+          // Send data to server
+          console.log('Sending data to:', REGISTER_ENDPOINT);
+          
+          // Improved debugging for form submission
+          console.log('Debug: FormData entries to be sent:');
+          for (let pair of formData.entries()) {
+            // Don't log file content, just log that a file is being sent
+            if (pair[1] instanceof File) {
+              console.log(`${pair[0]}: [File] ${pair[1].name}, type: ${pair[1].type}, size: ${pair[1].size} bytes`);
+            } else {
+              console.log(`${pair[0]}: ${pair[1]}`);
+            }
+          }
+          
+          // Check if all required fields are present
+          const requiredFields = [
+            'businessName', 'ownerName', 'businessEmail', 'businessPhone', 
+            'businessAddress', 'registrationNo', 'taxID', 'serviceName',
+            'capacity', 'paymentSetting', 'password', 'serviceFee'
+            // businessType is now provided as a hidden field with a default value
+          ];
+          
+          const missingFields = requiredFields.filter(field => !formData.has(field) || !formData.get(field));
+          if (missingFields.length > 0) {
+            console.error('Debug: Missing required fields:', missingFields);
+            throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+          }
+          
+          const response = await fetch(REGISTER_ENDPOINT, {
+            method: 'POST',
+            body: formData
+          });
+          
+          console.log('Response status:', response.status);
+          
+          // Check if response is JSON
+          const contentType = response.headers.get("content-type");
+          let data;
+          
+          if (contentType && contentType.indexOf("application/json") !== -1) {
+            data = await response.json();
+            console.log('Response data:', data);
+          } else {
+            const text = await response.text();
+            console.error("Non-JSON response:", text);
+            data = { message: "Server returned non-JSON response" };
+          }
+          
+          // Reset button
+          submitBtn.textContent = originalBtnText;
+          submitBtn.disabled = false;
+          
+          if (response.ok) {
+            // Show success message
+            showMessage('Business registration successful! Redirecting to login page...', 'success');
+            // Reset form
+            form.reset();
+            // Redirect to login page after a delay
+            setTimeout(() => {
+              window.location.href = 'ownerUI/frontend/ownerLogin.html?registered=true';
+            }, 3000);
+          } else {
+            // Show error message with more details if available
+            const errorMsg = data.message || 'Registration failed. Please check your information and try again.';
+            showMessage(errorMsg, 'error');
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          // Check if it's a network error (likely server not running or incorrect endpoint)
+          if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+            showMessage('Cannot connect to the server. Is the backend running at http://localhost:3000?', 'error');
+          } else {
+            showMessage(`Registration error: ${error.message}`, 'error');
+          }
+          
+          // Reset button
+          const submitBtn = document.getElementById('registerBtn');
+          submitBtn.textContent = originalBtnText;
+          submitBtn.disabled = false;
+        }
+      });
+
+      // Function to toggle fee fields based on payment selection
+      function setupPaymentFeeToggle() {
+        const paymentCheckboxes = document.querySelectorAll('input[name="paymentSetting"]');
+        
+        // Add event listeners to checkboxes - but don't hide all fields initially
+        paymentCheckboxes.forEach(checkbox => {
+          checkbox.addEventListener('change', function() {
+            const paymentType = this.value;
+            toggleFeeField(paymentType, this.checked);
+          });
+        });
+      }
+
+      // Helper function to toggle fee field display
+      function toggleFeeField(paymentType, show) {
+        const fieldMap = {
+          'monthly': 'monthlyFee',
+          'quarterly': 'quarterlyFee',
+          'half-yearly': 'halfYearlyFee',
+          'yearly': 'yearlyFee'
+        };
+        
+        const fieldName = fieldMap[paymentType];
+        if (!fieldName) return;
+        
+        const feeInput = document.querySelector(`input[name="${fieldName}"]`);
+        
+        if (show) {
+          feeInput.required = true;
+        } else {
+          feeInput.required = false;
+          feeInput.value = ''; // Clear value
+        }
+      }
+
+      // Get the register button and add click event listener
+      const registerBtn = document.getElementById('registerBtn');
+      registerBtn.addEventListener('click', function() {
+        // Manually trigger form validation and submission
+        if (form.checkValidity()) {
+          // If form is valid, manually trigger our submit handler
+          const submitEvent = new Event('submit', {
+            bubbles: true,
+            cancelable: true
+          });
+          form.dispatchEvent(submitEvent);
+        } else {
+          // If form is invalid, show the built-in validation messages
+          form.reportValidity();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
